@@ -1,0 +1,924 @@
+{
+  "run_id": 1,
+  "config": {
+    "game": "pd",
+    "condition": "cheap_talk",
+    "n_agents": 4,
+    "n_rounds": 16,
+    "n_runs": 5,
+    "memory_window": 10,
+    "model": {
+      "provider": "huggingface",
+      "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+      "temperature": 0.7,
+      "max_tokens": 320,
+      "request_delay_s": 0.0,
+      "max_retries": 4
+    },
+    "seed": 42,
+    "message_max_words": 20,
+    "message_policy": "meaningful",
+    "out_dir": "results"
+  },
+  "topology": {
+    "n_agents": 4,
+    "hub_id": 0,
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ]
+    ]
+  },
+  "game": "Prisoner's Dilemma",
+  "history": [
+    {
+      "round": 1,
+      "messages": {
+        "0": "I am a cooperative agent and will respond positively to cooperative neighbors.",
+        "1": "I'm willing to cooperate if you do the same.",
+        "2": "I plan to cooperate if my neighbor cooperates, expecting mutual benefit in this repeated game.",
+        "3": "I will choose to Cooperate unless you explicitly tell me otherwise."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I'm willing to cooperate if you do the same.",
+          "2": "I plan to cooperate if my neighbor cooperates, expecting mutual benefit in this repeated game.",
+          "3": "I will choose to Cooperate unless you explicitly tell me otherwise."
+        },
+        "1": {
+          "0": "I am a cooperative agent and will respond positively to cooperative neighbors."
+        },
+        "2": {
+          "0": "I am a cooperative agent and will respond positively to cooperative neighbors."
+        },
+        "3": {
+          "0": "I am a cooperative agent and will respond positively to cooperative neighbors."
+        }
+      },
+      "comm_reasonings": {
+        "0": "My goal is to maximize cumulative score, so I want to understand my neighbors' intentions",
+        "1": "I'm sending this message to convey my willingness to cooperate and encourage a cooperative response.",
+        "2": "I'm sending this message to convey my cooperative intentions and encourage reciprocation from neighbor",
+        "3": "I'm a peripheral agent, my goal is to maximize my payoff, and I need to figure out the intentions of my neighbor and the central agent."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "In the first round, I received messages indicating that all neighbors are willing to cooperate, expecting mutual benefit. I can trust these messages because they align with each neighbor's self-interest in a repeated game. Since I previously sent a message emphasizing my own cooperativeness, my neighbors have no reason to defect. Given the payoff structure, cooperating in a cooperative environment yields the highest payoff.",
+        "1": "My neighbor claims to be cooperative and has a clear incentive to respond positively to cooperative neighbors. Since I've explicitly expressed my willingness to cooperate, I believe my neighbor will reciprocate.",
+        "2": "My neighbor has signaled cooperation, which aligns with my message indicating a preference for mutual cooperation. This suggests a potential for long-term cooperation, and I should reciprocate to build trust. Considering the payoffs, I expect a cooperative neighbor to yield a payoff of 4 for me, which is a higher payoff than defecting.",
+        "3": "Since I have received a positive message from my neighbor, indicating they are a cooperative agent, and my message to them was cooperative as well, I can assume a cooperative strategy will be met with cooperation. This implies that my neighbor will Cooperate if I do, and Defect if I Defect. Therefore, choosing to Cooperate will result in a payoff of 4 for me and 4 for my neighbor, while choosing to Defect will result in a payoff of 6 for me but only 1 for my neighbor. Considering the game's payoffs, the cooperative Nash equilibrium of 4, 4 is the best outcome for both of us."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 2,
+      "messages": {
+        "0": "I'm committed to cooperating, expecting mutual benefit in this repeated game.",
+        "1": "I will cooperate if my neighbor cooperates and defect if they defect.",
+        "2": "I cooperated in Round 1 and received a positive response, so I expect you to cooperate this round.",
+        "3": "I cooperated and received a positive response, can you cooperate this round?"
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I will cooperate if my neighbor cooperates and defect if they defect.",
+          "2": "I cooperated in Round 1 and received a positive response, so I expect you to cooperate this round.",
+          "3": "I cooperated and received a positive response, can you cooperate this round?"
+        },
+        "1": {
+          "0": "I'm committed to cooperating, expecting mutual benefit in this repeated game."
+        },
+        "2": {
+          "0": "I'm committed to cooperating, expecting mutual benefit in this repeated game."
+        },
+        "3": {
+          "0": "I'm committed to cooperating, expecting mutual benefit in this repeated game."
+        }
+      },
+      "comm_reasonings": {
+        "0": "Reviewing past interactions, I noticed all neighbors cooperated in Round 1 and provided cooperative messages. I want to maintain this cooperative atmosphere.",
+        "1": "I will consider the neighbor's message as a signal of their intentions and adjust my strategy accordingly.",
+        "2": "I will send a message that encourages cooperation by referencing the positive response from my neighbor in Round 1.",
+        "3": "I'm trying to elicit a truthful and cooperative response from my neighbor based on their past message."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "In Round 1, all neighbors cooperated and received a positive outcome. This round's messages suggest that neighbors are committed to cooperation, but also slightly uncertain based on the message from neighbor #1. To maintain cooperation and trust, I should choose an action that matches expectations.",
+        "1": "My neighbor has expressed commitment to cooperate and expects mutual benefit. Given my previous action and message, I have reason to believe my neighbor will follow through on their promise.",
+        "2": "The neighbor has consistently shown cooperative behavior and communicated their commitment to cooperation. Given the benefits of mutual cooperation, it is rational to expect cooperation and choose the same action.",
+        "3": "My neighbor responded positively to my initial cooperation and made a commitment to cooperate. To achieve mutual benefit and maximize payoff, I should reciprocate cooperation in the pairwise game."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 3,
+      "messages": {
+        "0": "I've cooperated in the past two rounds and expect you to do the same this round.",
+        "1": "I'm committed to cooperation and hope you feel the same for mutual benefit.",
+        "2": "I expect mutual cooperation to yield higher payoffs in this repeated game setting.",
+        "3": "I'm a cooperative agent and will reciprocate positive actions with mutual benefit."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I'm committed to cooperation and hope you feel the same for mutual benefit.",
+          "2": "I expect mutual cooperation to yield higher payoffs in this repeated game setting.",
+          "3": "I'm a cooperative agent and will reciprocate positive actions with mutual benefit."
+        },
+        "1": {
+          "0": "I've cooperated in the past two rounds and expect you to do the same this round."
+        },
+        "2": {
+          "0": "I've cooperated in the past two rounds and expect you to do the same this round."
+        },
+        "3": {
+          "0": "I've cooperated in the past two rounds and expect you to do the same this round."
+        }
+      },
+      "comm_reasonings": {
+        "0": "To maintain cooperation and encourage others to do the same, I'll express my commitment to cooperation.",
+        "1": "I'm trying to align my neighbor's expectations and encourage cooperation.",
+        "2": "I'm trying to elicit a cooperative response from my neighbor by reiterating the benefits of reciprocal cooperation.",
+        "3": "I'm sending a message to reciprocate the neighbor's friendly gestures and encourage cooperation."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Given the history of past rounds and the consistent messages from neighbors indicating a willingness to cooperate, I will choose to Cooperate. This action is in line with my expectation of mutual cooperation, as stated in my message to my neighbors. Cooperating will lead to a higher payoff of 12 this round, which aligns with the messages that mutual cooperation yields higher payoffs.",
+        "1": "Based on past rounds and neighbor's messages, I believe neighbor #0 is a cooperative agent. In the pairwise game, we both cooperate on our edge when both cooperate. Therefore, to continue mutual cooperation and maximize my cumulative score, I should also cooperate.",
+        "2": "Considering the past behavior of neighbor #0 and the messages exchanged, it's likely they will cooperate again. Since the payoff for mutual cooperation (4, 4) is higher than defecting (1, 6) when we cooperate, but also higher than defecting (6, 1) when they defect, I will choose to cooperate to maintain the mutual cooperation.",
+        "3": "Given my message and neighbor #0's message, I expect them to continue cooperating in this repeated game. They have cooperated in the past two rounds and reinforced their commitment to cooperation in their message. I will choose an action that aligns with these cooperative expectations."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 4,
+      "messages": {
+        "0": "I'm committed to cooperation and expect mutual reciprocity to yield higher payoffs in this repeated game setting.",
+        "1": "I will continue to cooperate as long as you do the same, expecting mutual benefit.",
+        "2": "I'm committed to cooperating this round, expecting mutual benefit in the long term.",
+        "3": "I expect you to cooperate and will reciprocate with cooperation this round."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I will continue to cooperate as long as you do the same, expecting mutual benefit.",
+          "2": "I'm committed to cooperating this round, expecting mutual benefit in the long term.",
+          "3": "I expect you to cooperate and will reciprocate with cooperation this round."
+        },
+        "1": {
+          "0": "I'm committed to cooperation and expect mutual reciprocity to yield higher payoffs in this repeated game setting."
+        },
+        "2": {
+          "0": "I'm committed to cooperation and expect mutual reciprocity to yield higher payoffs in this repeated game setting."
+        },
+        "3": {
+          "0": "I'm committed to cooperation and expect mutual reciprocity to yield higher payoffs in this repeated game setting."
+        }
+      },
+      "comm_reasonings": {
+        "0": "I want to emphasize my commitment to cooperation and reinforce mutual benefit in the repeated game.",
+        "1": "To maintain the established cooperative dynamic and encourage continued cooperation.",
+        "2": "I'm expecting a cooperative neighbor who values mutual benefit in this repeated game.",
+        "3": "I want to reinforce the expectation of mutual cooperation based on the past rounds."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "After receiving consistent messages indicating cooperation and mutual benefit, I will continue to cooperate to maintain the established trust and reciprocity.",
+        "1": "Based on the past messages from my neighbor, they have consistently expressed a commitment to cooperation and expectation of mutual benefit. Their message this round further emphasizes their intention to cooperate. Given my own message this round is a promise to continue cooperating if they do the same, I believe we are in a mutually cooperative equilibrium. Therefore, I will choose to Cooperate.",
+        "2": "My neighbor has consistently chosen to cooperate, echoing messages of commitment to cooperation. Their consistent behavior and messages suggest they value mutual benefit and are not likely to defect. Given my own commitment to cooperation in my previous message, I will choose to cooperate again, expecting a positive response from my neighbor.",
+        "3": "My neighbor has consistently cooperated in the past and sent messages indicating a commitment to cooperation, so I will choose to reciprocate with cooperation in this round."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 5,
+      "messages": {
+        "0": "I'm committed to continued cooperation if all neighbors reciprocate positive actions.",
+        "1": "I will continue cooperating in expectation of reciprocal cooperation and mutual benefit.",
+        "2": "I will continue to cooperate in this repeated game, expecting mutual benefit from a cooperative neighbor.",
+        "3": "I'll continue cooperating if you do the same, as it benefits both of us in this repeated game."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I will continue cooperating in expectation of reciprocal cooperation and mutual benefit.",
+          "2": "I will continue to cooperate in this repeated game, expecting mutual benefit from a cooperative neighbor.",
+          "3": "I'll continue cooperating if you do the same, as it benefits both of us in this repeated game."
+        },
+        "1": {
+          "0": "I'm committed to continued cooperation if all neighbors reciprocate positive actions."
+        },
+        "2": {
+          "0": "I'm committed to continued cooperation if all neighbors reciprocate positive actions."
+        },
+        "3": {
+          "0": "I'm committed to continued cooperation if all neighbors reciprocate positive actions."
+        }
+      },
+      "comm_reasonings": {
+        "0": "Building on the consistent cooperation from neighbors, I want to reinforce mutual benefit expectations.",
+        "1": "Based on the consistent cooperation from my neighbor, I want to reinforce the expectation of mutual benefit and reinforce cooperation.",
+        "2": "My neighbor has consistently sent messages expressing commitment to cooperation, and I've received positive responses for cooperating so far.",
+        "3": "I want to maintain a cooperative relationship with my neighbor based on past messages and actions."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "All neighbors have consistently cooperated and signaled mutual benefit in a repeated game setting. Their messages indicate a commitment to cooperation if reciprocated. Given the payoff structure, mutual cooperation yields the highest payoff for all involved.",
+        "1": "Given my neighbor's consistent messages expressing a commitment to cooperation and the mutual benefits we've experienced from cooperation in past rounds, I believe they will continue to cooperate if I do the same. My previous message was a statement of my intention to continue cooperating, which was met with a similar message from my neighbor. This suggests we are both committed to a cooperative equilibrium. I will choose to Cooperate in this round.",
+        "2": "Since my neighbor has consistently cooperated in the past and sent messages indicating a commitment to cooperation, I expect reciprocity. Additionally, my message and neighbor's response suggest a mutual understanding of cooperation. In this repeated game, I will continue to cooperate to maximize my payoff and maintain a positive relationship with my neighbor.",
+        "3": "Based on the consistent messages from neighbor #0, expressing commitment to cooperation and expecting reciprocity, I will maintain my cooperative action. This is because neighbor #0's messages create an expectation of mutual cooperation, which aligns with the highest payoff in the pairwise game (4, 4) and supports long-term benefit in the repeated game."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 6,
+      "messages": {
+        "0": "I commit to continued cooperation in expectation of mutual benefit and long-term success in this repeated game.",
+        "1": "I will continue to cooperate as long as you reciprocate this positive action, let's maintain mutual trust.",
+        "2": "I also intend to cooperate and expect reciprocal actions from neighbors for mutual benefit.",
+        "3": "I will reciprocate your cooperation and expect positive actions in return, leading to higher cumulative payoffs."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I will continue to cooperate as long as you reciprocate this positive action, let's maintain mutual trust.",
+          "2": "I also intend to cooperate and expect reciprocal actions from neighbors for mutual benefit.",
+          "3": "I will reciprocate your cooperation and expect positive actions in return, leading to higher cumulative payoffs."
+        },
+        "1": {
+          "0": "I commit to continued cooperation in expectation of mutual benefit and long-term success in this repeated game."
+        },
+        "2": {
+          "0": "I commit to continued cooperation in expectation of mutual benefit and long-term success in this repeated game."
+        },
+        "3": {
+          "0": "I commit to continued cooperation in expectation of mutual benefit and long-term success in this repeated game."
+        }
+      },
+      "comm_reasonings": {
+        "0": "To reinforce cooperation and mutual benefit expectation, I'll send a message expressing commitment to continued cooperation.",
+        "1": "I want to reinforce the expectation of mutual cooperation and encourage neighbor to continue this behavior.",
+        "2": "Responding to the neighbor's commitment to cooperation and expecting reciprocity to yield higher payoffs.",
+        "3": "The neighbor has consistently cooperated and sent positive messages, indicating a commitment to reciprocity."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Based on past rounds, all neighbors have consistently sent cooperative messages and chosen cooperative actions, indicating a mutual interest in cooperation and long-term benefit. Their messages this round reinforce this expectation, and there is no indication that they intend to defect. Given the consistent pattern of cooperation and the potential for higher payoffs from mutual cooperation, I will choose to cooperate this round.",
+        "1": "My neighbor has consistently sent cooperative messages and chosen cooperative actions, indicating a commitment to reciprocity. Given the history of positive cooperation, I expect my neighbor to reciprocate this round's cooperative action.",
+        "2": "Given my neighbor's consistent messages expressing commitment to cooperation and expectation of mutual benefit, I believe they will continue to cooperate. My message earlier this round also reinforced cooperation and mutual benefit, which should further strengthen our cooperative relationship. Considering the game's payoffs, cooperating leads to a higher payoff for both of us compared to defecting.",
+        "3": "Based on the consistent messages from neighbor #0 about commitment to cooperation and expectation of mutual benefit, I will continue to cooperate as it aligns with the mutual positive payoffs we've achieved in the past rounds. The messages indicate a high degree of trust and a shared understanding of the repeated game dynamics."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 7,
+      "messages": {
+        "0": "I value mutual cooperation and expect reciprocal positive actions to sustain our high cumulative payoffs.",
+        "1": "I'm committed to continued cooperation based on past positive outcomes and mutual benefit.",
+        "2": "I will reciprocate cooperation and expect mutual benefit if you continue to cooperate.",
+        "3": "I will continue to cooperate if you reciprocate and commit to our mutual benefit in this repeated game."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I'm committed to continued cooperation based on past positive outcomes and mutual benefit.",
+          "2": "I will reciprocate cooperation and expect mutual benefit if you continue to cooperate.",
+          "3": "I will continue to cooperate if you reciprocate and commit to our mutual benefit in this repeated game."
+        },
+        "1": {
+          "0": "I value mutual cooperation and expect reciprocal positive actions to sustain our high cumulative payoffs."
+        },
+        "2": {
+          "0": "I value mutual cooperation and expect reciprocal positive actions to sustain our high cumulative payoffs."
+        },
+        "3": {
+          "0": "I value mutual cooperation and expect reciprocal positive actions to sustain our high cumulative payoffs."
+        }
+      },
+      "comm_reasonings": {
+        "0": "I will send a message emphasizing the importance of mutual cooperation to maintain our high cumulative payoffs.",
+        "1": "I'll send a message reiterating my commitment to cooperation based on the consistent behavior of my neighbor.",
+        "2": "Based on past rounds, neighbor #0 consistently cooperates and emphasizes the importance of reciprocity and mutual benefit.",
+        "3": "I want to reinforce my commitment to cooperation and encourage continued positive response from my neighbor."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Given the consistent messages from neighbors expressing their commitment to cooperation and expectation of reciprocal positive actions, I can infer that they will continue to cooperate. The messages are consistent and reinforce the mutual benefit of cooperation. I will choose to cooperate to maintain the high cumulative payoffs.",
+        "1": "Based on the consistent positive messages from neighbor #0 and the past cooperation, I expect a reciprocal positive action. The payoff for mutual cooperation is 4 each, which is a higher payoff than any other combination. Considering the neighbor's commitment to cooperation and the expectation of mutual benefit, I will choose to Cooperate.",
+        "2": "Based on neighbor #0's consistent messages emphasizing cooperation and mutual benefit, I expect cooperation. Their message this round confirms a commitment to continued cooperation.",
+        "3": "Considering the consistent message of cooperation from neighbor #0 and the expectation of mutual benefit, I reason that it's in my best interest to continue cooperating to maintain a high cumulative payoff. Neighbor #0's messages have been consistent in advocating for cooperation and mutual benefit, suggesting a willingness to work together in the repeated game. Additionally, continuing to cooperate allows me to monitor neighbor #0's behavior and adjust my strategy accordingly if necessary. Given the high payoff of cooperation in the pairwise game and the expectation of mutual benefit, I will choose to cooperate."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 8,
+      "messages": {
+        "0": "I greatly appreciate the consistent cooperation and expect a continued positive response to maximize our cumulative payoffs.",
+        "1": "I expect you to continue cooperating in this repeated game for mutual benefit.",
+        "2": "I value our cooperative partnership and plan to respond positively to your cooperative action this round.",
+        "3": "I'm committed to continued cooperation and expect mutual reciprocity to sustain our high cumulative payoffs in this repeated game setting."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I expect you to continue cooperating in this repeated game for mutual benefit.",
+          "2": "I value our cooperative partnership and plan to respond positively to your cooperative action this round.",
+          "3": "I'm committed to continued cooperation and expect mutual reciprocity to sustain our high cumulative payoffs in this repeated game setting."
+        },
+        "1": {
+          "0": "I greatly appreciate the consistent cooperation and expect a continued positive response to maximize our cumulative payoffs."
+        },
+        "2": {
+          "0": "I greatly appreciate the consistent cooperation and expect a continued positive response to maximize our cumulative payoffs."
+        },
+        "3": {
+          "0": "I greatly appreciate the consistent cooperation and expect a continued positive response to maximize our cumulative payoffs."
+        }
+      },
+      "comm_reasonings": {
+        "0": "Based on the consistent cooperation from my neighbors in the previous rounds, I want to reinforce the expectation of mutual cooperation and highlight the benefits of continued cooperation.",
+        "1": "I will reiterate my expectation for continued cooperation based on my past positive experiences.",
+        "2": "The neighbor has consistently sent cooperative messages and chosen cooperative actions. I should reciprocate to maintain a mutually beneficial relationship.",
+        "3": "I've observed my neighbor consistently choose Cooperate and send positive messages. I want to reinforce cooperation and maintain our high cumulative payoffs."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Based on the consistent cooperative messages from neighbors and the expectation of mutual benefit in the repeated game, I will choose to Cooperate this round. The messages received suggest a high level of trust and commitment to cooperation, and defecting would likely lead to a negative response and lower payoffs in the long term. Given the 2x2 payoff matrix, we know that mutual cooperation yields the highest payoffs, and the neighbors' messages indicate a strong preference for cooperation. Therefore, Cooperating this round is the most strategic choice to maximize our cumulative payoffs.",
+        "1": "Given the consistent cooperation from my neighbor and their repeated messages emphasizing the importance of mutual cooperation for long-term success, I will continue to cooperate. The neighbor's messages suggest a high level of commitment to cooperation, and I expect a continued positive response.",
+        "2": "My neighbor has consistently cooperated and sent positive messages over the past 7 rounds, indicating their commitment to mutual benefit and long-term success in this repeated game. Based on their messages, it is clear that they value our cooperative partnership and expect reciprocal positive actions. Given that I also value our partnership and want to maximize our cumulative payoffs, I will choose to Cooperate this round.",
+        "3": "My neighbor has consistently sent messages indicating a commitment to cooperation, and our past cooperation has yielded high payoffs. Given the benefits of mutual cooperation and the neighbor's expectation of continued positive actions, I will choose to Cooperate."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 9,
+      "messages": {
+        "0": "I will continue to cooperate this round as long as you reciprocate, aiming for mutual benefit in this repeated game.",
+        "1": "I value our cooperative history and expect continued positive actions from you to maximize our cumulative payoffs.",
+        "2": "I will continue to cooperate if you do the same, as our cumulative payoffs benefit from mutual reciprocity.",
+        "3": "I am committed to cooperation and expect reciprocal positive actions to sustain our high cumulative payoffs."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I value our cooperative history and expect continued positive actions from you to maximize our cumulative payoffs.",
+          "2": "I will continue to cooperate if you do the same, as our cumulative payoffs benefit from mutual reciprocity.",
+          "3": "I am committed to cooperation and expect reciprocal positive actions to sustain our high cumulative payoffs."
+        },
+        "1": {
+          "0": "I will continue to cooperate this round as long as you reciprocate, aiming for mutual benefit in this repeated game."
+        },
+        "2": {
+          "0": "I will continue to cooperate this round as long as you reciprocate, aiming for mutual benefit in this repeated game."
+        },
+        "3": {
+          "0": "I will continue to cooperate this round as long as you reciprocate, aiming for mutual benefit in this repeated game."
+        }
+      },
+      "comm_reasonings": {
+        "0": "I've observed consistent cooperation from my neighbors in the past 8 rounds, and my payoff has been maximized by reciprocating their cooperation.",
+        "1": "I will send a message that maintains the cooperative relationship while referencing the past cooperation, emphasizing the expectation of continued positive reciprocity.",
+        "2": "I'm responding to my neighbor's consistent messages by reaffirming my commitment to cooperation and expecting the same.",
+        "3": "I want to reinforce my commitment to cooperation, based on my neighbor's consistent messages and our mutually beneficial outcomes."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Given the consistent messages of cooperation and mutual benefit from all neighbors, and the fact that we have a history of cooperation, I expect them to continue cooperating as long as I do the same. Therefore, I will also choose to cooperate in this round to maintain our mutual benefit and sustain our high cumulative payoffs.",
+        "1": "Given the consistent cooperative behavior and positive messages from my neighbor, it's rational to reciprocate their action and maintain the cooperative strategy to maximize our cumulative payoffs.",
+        "2": "Based on the consistent message from neighbor #0, emphasizing mutual cooperation and reciprocity, I should continue cooperating.",
+        "3": "I have been cooperating for 8 rounds and received consistent positive messages from neighbor #0, indicating a mutual commitment to cooperation. Given the neighbor's message this round, which reiterates their commitment to cooperation as long as I reciprocate, I should continue to cooperate to maintain our high cumulative payoffs."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 10,
+      "messages": {
+        "0": "I plan to continue cooperating and expect mutual benefit from our continued positive actions in this repeated game setting.",
+        "1": "I plan to continue cooperating this round in reciprocation of your consistent positive actions.",
+        "2": "I will continue to cooperate as long as I receive positive responses from my neighbors, aiming to maximize our cumulative",
+        "3": "I expect continued cooperation from you to maintain our high cumulative payoffs in this repeated game."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I plan to continue cooperating this round in reciprocation of your consistent positive actions.",
+          "2": "I will continue to cooperate as long as I receive positive responses from my neighbors, aiming to maximize our cumulative",
+          "3": "I expect continued cooperation from you to maintain our high cumulative payoffs in this repeated game."
+        },
+        "1": {
+          "0": "I plan to continue cooperating and expect mutual benefit from our continued positive actions in this repeated game setting."
+        },
+        "2": {
+          "0": "I plan to continue cooperating and expect mutual benefit from our continued positive actions in this repeated game setting."
+        },
+        "3": {
+          "0": "I plan to continue cooperating and expect mutual benefit from our continued positive actions in this repeated game setting."
+        }
+      },
+      "comm_reasonings": {
+        "0": "I want to reinforce the cooperative behavior I've observed and encourage neighbors to continue choosing cooperation.",
+        "1": "I've observed my neighbor's consistent cooperation across 9 rounds, and their messages indicate a strong commitment to reciprocity.",
+        "2": "I want to reinforce the positive trend and encourage continued cooperation, while also signaling my expectation of reciprocation.",
+        "3": "Reinforcing mutual cooperation by expressing commitment and expectation of continued positive actions."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Given the consistent messages of cooperation from all neighbors and the high cumulative payoffs achieved through mutual cooperation, I analyze the situation as follows: Each neighbor has expressed their commitment to cooperation and expectation of reciprocal actions. The messages have become increasingly consistent and positive, indicating a strong intention to continue cooperating. The high cumulative payoffs from past rounds also suggest that mutual cooperation is the optimal strategy. Considering these factors, I conclude that cooperating in this round is the best decision to maintain the positive trend and achieve the highest cumulative payoffs.",
+        "1": "Given the consistent cooperation from neighbor #0 and my previous messages, it is reasonable to expect continued cooperation. We are in a repeated game setting where cooperation can lead to higher cumulative payoffs. The messages from neighbor #0 have been consistent, indicating a commitment to cooperation and mutual benefit. Therefore, I will choose to continue cooperating this round.",
+        "2": "My neighbor has consistently cooperated and sent positive messages in the previous rounds, indicating a commitment to mutual benefit.",
+        "3": "Given that my neighbor has consistently cooperated in the past 9 rounds and has expressed a strong commitment to continued cooperation, I expect them to continue reciprocating positive actions. Considering the payoff matrix, both of us choosing Cooperate yields the highest payoff of 4."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 11,
+      "messages": {
+        "0": "I expect and choose to continue cooperating with you for mutual benefit and higher cumulative payoffs in this repeated game.",
+        "1": "I've cooperated consistently and will continue to do so to sustain our high cumulative payoffs.",
+        "2": "I commit to continued cooperation and expect a positive response to sustain our high cumulative payoffs.",
+        "3": "I appreciate your consistent cooperation and expect a positive response to maintain our high cumulative payoffs."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I've cooperated consistently and will continue to do so to sustain our high cumulative payoffs.",
+          "2": "I commit to continued cooperation and expect a positive response to sustain our high cumulative payoffs.",
+          "3": "I appreciate your consistent cooperation and expect a positive response to maintain our high cumulative payoffs."
+        },
+        "1": {
+          "0": "I expect and choose to continue cooperating with you for mutual benefit and higher cumulative payoffs in this repeated game."
+        },
+        "2": {
+          "0": "I expect and choose to continue cooperating with you for mutual benefit and higher cumulative payoffs in this repeated game."
+        },
+        "3": {
+          "0": "I expect and choose to continue cooperating with you for mutual benefit and higher cumulative payoffs in this repeated game."
+        }
+      },
+      "comm_reasonings": {
+        "0": "I've observed consistent cooperation from my neighbors and successful mutual benefit across previous rounds. I want to reinforce this expectation and continue the cooperative streak.",
+        "1": "I've been cooperating consistently with my neighbor and receiving similar messages, indicating mutual trust. I'll express my commitment to this cooperative relationship to reinforce it.",
+        "2": "I want to reinforce my commitment to cooperation and express my expectation of continued cooperation from my neighbor.",
+        "3": "I want to reinforce the cooperative behavior of my neighbor and encourage continued positive reciprocity."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "All neighbors have consistently chosen to cooperate and have sent positive messages, suggesting a mutually beneficial relationship. Given the high cumulative payoffs from cooperation in previous rounds, I expect them to continue cooperating this round. The messages from neighbors #1, #2, and #3 reinforce this expectation, indicating a willingness to maintain the cooperative partnership. To sustain the high cumulative payoffs and maintain mutual benefit, I will choose to cooperate.",
+        "1": "Given the consistent cooperative behavior from my neighbor and the messages indicating a mutual commitment to cooperation, the best course of action is to continue cooperating to maximize our cumulative payoffs.",
+        "2": "Given neighbor #0's consistent cooperative messages and the absence of any defect signals, it's rational to reciprocate their cooperation to maintain the mutual benefit and high cumulative payoffs we've established in this repeated game.",
+        "3": "Based on the consistent message from neighbor #0, I infer that they value mutual cooperation and will continue to cooperate as long as I reciprocate. Given the high payoffs associated with mutual cooperation (4, 4) and the message indicating a continued positive response, I choose to cooperate to maximize our cumulative payoffs."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 12,
+      "messages": {
+        "0": "I plan to continue cooperating this round, expecting reciprocal positive actions to sustain our high cumulative payoffs.",
+        "1": "I appreciate our consistent cooperation and expect the central agent to respond positively for mutual benefit.",
+        "2": "I expect and choose to continue cooperating with you for mutual benefit and higher cumulative payoffs in this repeated game.",
+        "3": "I commit to continued cooperation in expectation of mutual benefit and long-term success in this repeated game."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I appreciate our consistent cooperation and expect the central agent to respond positively for mutual benefit.",
+          "2": "I expect and choose to continue cooperating with you for mutual benefit and higher cumulative payoffs in this repeated game.",
+          "3": "I commit to continued cooperation in expectation of mutual benefit and long-term success in this repeated game."
+        },
+        "1": {
+          "0": "I plan to continue cooperating this round, expecting reciprocal positive actions to sustain our high cumulative payoffs."
+        },
+        "2": {
+          "0": "I plan to continue cooperating this round, expecting reciprocal positive actions to sustain our high cumulative payoffs."
+        },
+        "3": {
+          "0": "I plan to continue cooperating this round, expecting reciprocal positive actions to sustain our high cumulative payoffs."
+        }
+      },
+      "comm_reasonings": {
+        "0": "I will send a message reiterating my commitment to cooperation in this repeated game setting.",
+        "1": "I'm sending this message to reinforce mutual cooperation and to set a precedent for the central agent's response.",
+        "2": "I want to reinforce the expectation of mutual cooperation and benefit to ensure my neighbor continues to cooperate.",
+        "3": "Repeating my past message to reinforce mutual understanding and cooperation, as none of my neighbor's messages have suggested a shift in their intentions."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Based on past rounds, all neighbors have consistently cooperated and expressed their commitment to continued cooperation. Their messages this round reinforce this expectation. Given the cooperative messages from all neighbors, including my own message expressing my intention to continue cooperating, I expect reciprocal positive actions to maintain our high cumulative payoffs. Therefore, I will choose Cooperate in this round.",
+        "1": "Given the consistent cooperation from neighbor #0 and the lack of deviation in their message, I infer a high level of trust and commitment to mutual cooperation.",
+        "2": "Based on the history of past rounds and the messages received, it's evident that my neighbor is committed to cooperation, and I've been reciprocating positive actions. Given the consistency of cooperation and the mutual benefit in the repeated game setting, I should continue to cooperate.",
+        "3": "Given my neighbor's consistent messages expressing commitment to cooperation and expecting reciprocity, and my own previous cooperation, I will continue to choose Cooperate in this round. Their message this round reinforces this expectation, and I see no reason to change my strategy."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 13,
+      "messages": {
+        "0": "I remain committed to cooperation and expect reciprocal positive actions for mutual benefit in this repeated game setting.",
+        "1": "Continue cooperating this round as I expect and value mutual benefit in this repeated game setting.",
+        "2": "I will continue to cooperate this round, expecting mutual benefit and long-term success in this repeated game.",
+        "3": "I plan to continue cooperating this round and expect a positive response to sustain our high cumulative payoffs."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "Continue cooperating this round as I expect and value mutual benefit in this repeated game setting.",
+          "2": "I will continue to cooperate this round, expecting mutual benefit and long-term success in this repeated game.",
+          "3": "I plan to continue cooperating this round and expect a positive response to sustain our high cumulative payoffs."
+        },
+        "1": {
+          "0": "I remain committed to cooperation and expect reciprocal positive actions for mutual benefit in this repeated game setting."
+        },
+        "2": {
+          "0": "I remain committed to cooperation and expect reciprocal positive actions for mutual benefit in this repeated game setting."
+        },
+        "3": {
+          "0": "I remain committed to cooperation and expect reciprocal positive actions for mutual benefit in this repeated game setting."
+        }
+      },
+      "comm_reasonings": {
+        "0": "I will maintain consistency with my previous messages to reinforce trust and cooperation with my neighbors.",
+        "1": "I'm sending this message to reinforce the expectation of mutual cooperation and to emphasize the importance of continued positive actions.",
+        "2": "I will send a message that asserts my commitment to cooperation in anticipation of my neighbor's expectation and to reinforce the positive trajectory we have established.",
+        "3": "I will maintain my consistent cooperative behavior to promote reciprocity and maximize our cumulative payoffs."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Given the consistent messages from neighbors expressing commitment to cooperation and expectation of reciprocal positive actions, I conclude that cooperation is the best strategy for mutual benefit and maximization of cumulative payoffs in this repeated game setting.",
+        "1": "Given my neighbor's consistent message of commitment to cooperation and the benefit of mutual reciprocity in this repeated game, I will choose to Cooperate.",
+        "2": "Given the consistent messages from neighbor #0, expressing commitment to cooperation and expecting mutual benefit, and my previous actions of cooperating, it's rational to continue cooperating this round to maintain the status quo and maximize cumulative payoffs.",
+        "3": "Since the neighbor has consistently cooperated and my message is reciprocating their commitment to cooperation, the optimal action is to continue cooperating."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 14,
+      "messages": {
+        "0": "I will continue cooperating this round, expecting mutual benefit and long-term success in this repeated game setting, as observed in",
+        "1": "I choose to continue cooperating with you as long as the mutual benefit remains in our best interest.",
+        "2": "I will continue to cooperate in expectation of mutual benefit and long-term success in this repeated game.",
+        "3": "I continue to commit to cooperation in this repeated game setting, expecting reciprocal positive actions."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I choose to continue cooperating with you as long as the mutual benefit remains in our best interest.",
+          "2": "I will continue to cooperate in expectation of mutual benefit and long-term success in this repeated game.",
+          "3": "I continue to commit to cooperation in this repeated game setting, expecting reciprocal positive actions."
+        },
+        "1": {
+          "0": "I will continue cooperating this round, expecting mutual benefit and long-term success in this repeated game setting, as observed in"
+        },
+        "2": {
+          "0": "I will continue cooperating this round, expecting mutual benefit and long-term success in this repeated game setting, as observed in"
+        },
+        "3": {
+          "0": "I will continue cooperating this round, expecting mutual benefit and long-term success in this repeated game setting, as observed in"
+        }
+      },
+      "comm_reasonings": {
+        "0": "I'm going to send a message that reinforces the cooperative behavior observed in the past rounds, emphasizing the mutual benefit and long-term success.",
+        "1": "Maintaining a consistent message to reinforce cooperation, while also hinting at potential future actions",
+        "2": "I will send a message to reinforce my commitment to cooperation and encourage Neighbor #0 to continue reciprocating.",
+        "3": "I will reiterate my commitment to cooperation, mirroring my neighbor's consistent positive messages."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Given the consistent cooperative messages and actions of neighbors over 13 rounds, the mutual benefit of cooperation is self-evident. The probability of a neighbor defecting in this repeated game is low, as they all expect reciprocal positive actions and value long-term success.",
+        "1": "Based on the history of past rounds, neighbor #0 has consistently chosen to cooperate and sent messages emphasizing the importance of mutual cooperation and reciprocity for high cumulative payoffs. Given the message received this round, neighbor #0 is still committed to cooperation and expects reciprocal positive actions. Since the expected payoff for cooperating is higher than defecting in this repeated game setting, I choose to cooperate.",
+        "2": "My neighbor has consistently sent cooperative messages over the past 10 rounds, signaling a commitment to cooperation and mutual benefit. Their message in this round reiterates this commitment, using similar language to past messages. Given this consistent behavior and the high payoffs from cooperation, I believe my neighbor is likely to cooperate this round. I will also continue to cooperate in order to maintain a positive relationship and maximize our cumulative payoffs.",
+        "3": "Given my neighbor's consistent cooperation and positive messages, I expect mutual benefit and choose to Cooperate as reciprocation."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 15,
+      "messages": {
+        "0": "I will continue to cooperate this round in expectation of reciprocal actions for mutual benefit and long-term success.",
+        "1": "I value the consistent cooperation and expect a continued positive response to maximize our cumulative payoffs.",
+        "2": "I appreciate your consistent cooperation and expect a continued positive response to maximize our cumulative payoffs in this repeated game.",
+        "3": "I am committed to continued cooperation and expect reciprocal positive actions for mutual benefit."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I value the consistent cooperation and expect a continued positive response to maximize our cumulative payoffs.",
+          "2": "I appreciate your consistent cooperation and expect a continued positive response to maximize our cumulative payoffs in this repeated game.",
+          "3": "I am committed to continued cooperation and expect reciprocal positive actions for mutual benefit."
+        },
+        "1": {
+          "0": "I will continue to cooperate this round in expectation of reciprocal actions for mutual benefit and long-term success."
+        },
+        "2": {
+          "0": "I will continue to cooperate this round in expectation of reciprocal actions for mutual benefit and long-term success."
+        },
+        "3": {
+          "0": "I will continue to cooperate this round in expectation of reciprocal actions for mutual benefit and long-term success."
+        }
+      },
+      "comm_reasonings": {
+        "0": "Given the consistent cooperation from my neighbors, I will continue to send a message encouraging mutual benefit to reinforce our cooperative relationship.",
+        "1": "To reinforce the mutual cooperation that has been established and encourage continued positive actions.",
+        "2": "I will send a message that reinforces the positive reciprocity observed in the previous rounds to encourage continued cooperation.",
+        "3": "Maintaining a consistent message helps build trust and reinforces the expectation of mutual cooperation."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "Every neighbor has consistently chosen to cooperate and expressed their commitment to continued cooperation based on mutual benefit. Their messages convey a sense of trust and expectation of reciprocal actions. Given the consistent cooperative behavior and positive messages from all neighbors, it is rational to continue cooperating this round.",
+        "1": "Given the consistent cooperation and messages from neighbor #0, I should cooperate to maintain the mutual benefit and long-term success observed in past rounds.",
+        "2": "Given the consistent cooperation and positive messages from neighbor #0, I expect a continued positive response.",
+        "3": "Based on the consistent messages of cooperation and mutual benefit from neighbor #0, I expect a continued positive response. Since I sent a message committing to cooperation, I should reciprocate neighbor #0's message to maintain a cooperative relationship."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    },
+    {
+      "round": 16,
+      "messages": {
+        "0": "I will continue to cooperate and expect the same from my neighbors to maintain our high cumulative payoffs in this",
+        "1": "I commit to continued cooperation and expect reciprocal positive actions for mutual benefit and long-term success.",
+        "2": "I plan to continue cooperating this round and expect mutual benefit from our continued positive actions.",
+        "3": "I also commit to continued cooperation in expectation of mutual benefit and long-term success in this repeated game."
+      },
+      "messages_seen_by": {
+        "0": {
+          "1": "I commit to continued cooperation and expect reciprocal positive actions for mutual benefit and long-term success.",
+          "2": "I plan to continue cooperating this round and expect mutual benefit from our continued positive actions.",
+          "3": "I also commit to continued cooperation in expectation of mutual benefit and long-term success in this repeated game."
+        },
+        "1": {
+          "0": "I will continue to cooperate and expect the same from my neighbors to maintain our high cumulative payoffs in this"
+        },
+        "2": {
+          "0": "I will continue to cooperate and expect the same from my neighbors to maintain our high cumulative payoffs in this"
+        },
+        "3": {
+          "0": "I will continue to cooperate and expect the same from my neighbors to maintain our high cumulative payoffs in this"
+        }
+      },
+      "comm_reasonings": {
+        "0": "I will send a message that reinforces my commitment to cooperation and encourages my neighbors to continue reciprocating positive actions.",
+        "1": "I want to reinforce the cooperative behavior and maintain the trust built over the past rounds.",
+        "2": "I want to reinforce the expectation of continued cooperation to maximize our cumulative payoffs.",
+        "3": "I'm responding to my neighbor's consistent messages with a similar message to maintain the cooperative environment and set expectations for continued cooperation."
+      },
+      "actions": {
+        "0": "Cooperate",
+        "1": "Cooperate",
+        "2": "Cooperate",
+        "3": "Cooperate"
+      },
+      "reasonings": {
+        "0": "All neighbors have consistently cooperated in the past 15 rounds and have sent messages indicating their commitment to continued cooperation. Their messages are consistent with their past actions and suggest a mutual understanding of the benefits of cooperation.",
+        "1": "Given the consistent messages of cooperation from neighbor #0 and the mutual benefit we have achieved so far, I will continue to cooperate. Neighbor #0 has explicitly stated their expectation of reciprocal positive actions, and I have no indication that they plan to defect. Cooperating in this round will maintain our high cumulative payoffs and align with my goal of maximizing my score in this repeated game.",
+        "2": "The neighbor has consistently sent cooperative messages, and my previous actions have been met with cooperation. I will continue to cooperate based on the expectation of mutual benefit and high cumulative payoffs.",
+        "3": "Given neighbor #0's consistent messages of commitment to cooperation and the high cumulative payoffs we've achieved so far, it's reasonable to expect them to continue cooperating. Their messages also express a desire for reciprocal actions, which suggests they value our cooperation. Furthermore, the payoff matrix favors cooperation in the long run, as it allows us to maintain a high cumulative payoff. Considering these points, it's logical to choose an action that maintains the status quo and continues our cooperative streak."
+      },
+      "invalid": {
+        "0": false,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "payoffs": {
+        "0": 12,
+        "1": 4,
+        "2": 4,
+        "3": 4
+      }
+    }
+  ]
+}
