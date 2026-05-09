@@ -16,13 +16,21 @@ ConditionName = Literal["no_comm", "cheap_talk"]
 # "local" runs the model on the current machine via transformers (Kaggle / Colab
 # / your own GPU). The other providers are remote API calls.
 Provider = Literal["groq", "openai", "huggingface", "openrouter", "local"]
-MessagePolicy = Literal["meaningful", "irrelevant", "silence"]
+
+# Message-content policies (alibi for cheap-talk content control).
+# See message_policies.py for what each one does.
+MessagePolicy = Literal[
+    "meaningful",       # default LLM strategic message
+    "irrelevant",       # off-topic templates
+    "no_sense",         # alias for irrelevant
+    "silence",          # empty message
+    "counterfactual",   # LLM asked for IF/WOULD framing
+    "framing",          # LLM asked for social-context framing (see framing_type)
+]
+
+FramingType = Literal["business", "team", "competitive", "neutral"]
 
 
-# Defaults are tuned for FREE TIERS so the pilot can run end-to-end without
-# credits. For groq we use llama-3.1-8b-instant (5x more daily tokens than 70B).
-# For local (Kaggle/Colab) we default to a model that is NOT gated (Qwen) so
-# the user can verify the local path works before requesting Llama access.
 DEFAULT_MODELS: dict[str, str] = {
     "groq": "llama-3.1-8b-instant",
     "openai": "gpt-4o-mini",
@@ -48,14 +56,16 @@ class ExperimentConfig:
     """Top-level knobs for one full experiment (many runs of one condition)."""
     game: GameName = "pd"
     condition: ConditionName = "no_comm"
-    n_agents: int = 4              # 1 hub + 3 leaves (Sabani section 5.2.3)
-    n_rounds: int = 16             # Georgousis section 5.5
-    n_runs: int = 5                # Georgousis section 6.1
-    memory_window: int = 10        # Sabani section 4.1.4 (sliding window)
+    n_agents: int = 4
+    n_rounds: int = 16
+    n_runs: int = 5
+    memory_window: int = 10
     model: ModelConfig = field(default_factory=ModelConfig)
     seed: int = 42
     message_max_words: int = 20
     message_policy: MessagePolicy = "meaningful"
+    # Sub-knob: only used when message_policy == "framing".
+    framing_type: FramingType = "business"
     out_dir: str = "results"
 
     def to_dict(self) -> dict:

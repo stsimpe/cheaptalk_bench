@@ -53,6 +53,7 @@ class GameEngine:
                     message_max_words=self.cfg.message_max_words,
                     memory_window=self.cfg.memory_window,
                     message_policy=self.cfg.message_policy,
+                    framing_type=self.cfg.framing_type,
                 )
             )
         return agents

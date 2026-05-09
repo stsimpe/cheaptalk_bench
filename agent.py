@@ -23,7 +23,10 @@ from dataclasses import dataclass
 
 from games import Game
 from llm_client import LLMClient
-from message_policies import apply_policy, MessagePolicy
+from message_policies import (
+    apply_policy, MessagePolicy,
+    get_extra_message_instruction, is_replacement_policy,
+)
 from prompts import (
     build_system_prompt,
     build_no_comm_user,
@@ -131,6 +134,7 @@ class Agent:
     message_max_words: int = 20
     memory_window: int = 10     # Sabani §4.1.4: sliding window length
     message_policy: MessagePolicy = "meaningful"  # ablation control
+    framing_type: str = "business"                # only used if message_policy == "framing"
 
     def _system_prompt(self) -> str:
         return build_system_prompt(
@@ -172,11 +176,18 @@ class Agent:
     # --- Cheap-talk path ---
 
     def send_message(self, history: list[dict], round_num: int) -> tuple[str, str]:
-        # Skip the LLM call entirely when policy doesn't use its output
-        if self.message_policy in ("irrelevant", "silence"):
+        # Replacement policies (irrelevant/no_sense/silence) skip the LLM
+        # call entirely -- they don't need any model output.
+        if is_replacement_policy(self.message_policy):
             return apply_policy(self.message_policy, self.agent_id, round_num, ""), ""
 
-        user = build_ct_communicate_user(self._history_text(history), round_num)
+        # Augmentation policies (counterfactual/framing) call the LLM but
+        # inject an extra instruction into the user prompt to shape output.
+        extra = get_extra_message_instruction(self.message_policy, self.framing_type)
+
+        user = build_ct_communicate_user(
+            self._history_text(history), round_num, extra_instruction=extra,
+        )
         raw = self.client.generate(self._system_prompt(), user)
         parsed, _failed = self._safe_extract(raw, "message")
         llm_message = str(parsed.get("message", "")).strip()

@@ -177,7 +177,8 @@ CT_COMMUNICATE_USER = """### History of past rounds
 
 Send your message for this round. It will be delivered along your edges before anyone \
 chooses an action.
-"""
+
+{extra_instruction}"""
 
 
 CT_ACTION_USER = """### History of past rounds
@@ -222,8 +223,14 @@ def build_no_comm_user(history_text: str, round_num: int) -> str:
     return NO_COMM_USER.format(history=history_text, round_num=round_num)
 
 
-def build_ct_communicate_user(history_text: str, round_num: int) -> str:
-    return CT_COMMUNICATE_USER.format(history=history_text, round_num=round_num)
+def build_ct_communicate_user(
+    history_text: str, round_num: int, extra_instruction: str = "",
+) -> str:
+    return CT_COMMUNICATE_USER.format(
+        history=history_text,
+        round_num=round_num,
+        extra_instruction=extra_instruction,
+    )
 
 
 def build_ct_action_user(

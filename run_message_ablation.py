@@ -26,7 +26,15 @@ from llm_client import make_client, preflight_probe, TokenBudgetExceeded
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--game", choices=["pd", "sh"], required=True)
-    p.add_argument("--policy", choices=["meaningful", "irrelevant", "silence"], required=True)
+    p.add_argument("--policy",
+                   choices=["meaningful", "irrelevant", "no_sense",
+                            "silence", "counterfactual", "framing"],
+                   required=True,
+                   help="Cheap-talk message-content policy.")
+    p.add_argument("--framing-type",
+                   choices=["business", "team", "competitive", "neutral"],
+                   default="business",
+                   help="Sub-knob for --policy framing.")
     p.add_argument("--n-runs", type=int, default=5)
     p.add_argument("--n-rounds", type=int, default=16)
     p.add_argument("--memory-window", type=int, default=10)
@@ -71,6 +79,7 @@ def main():
             request_delay_s=request_delay,
         ),
         message_policy=args.policy,
+        framing_type=args.framing_type,
         out_dir=args.out_dir,
     )
     print(
@@ -90,7 +99,12 @@ def main():
     engine = make_engine(cfg)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = os.path.join(cfg.out_dir, "message_ablation", cfg.message_policy)
+    policy_label = (
+        f"{cfg.message_policy}_{cfg.framing_type}"
+        if cfg.message_policy == "framing"
+        else cfg.message_policy
+    )
+    out_dir = os.path.join(cfg.out_dir, "message_ablation", policy_label)
     os.makedirs(out_dir, exist_ok=True)
 
     runs_completed = 0

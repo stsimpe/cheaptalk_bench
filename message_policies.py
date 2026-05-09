@@ -1,22 +1,48 @@
 """Message policies for cheap talk ablation experiments.
 
-A "message policy" overrides the agent's LLM-generated message with a canned
-template. This lets us test whether the cheap talk effect depends on message
-CONTENT or merely on the presence of a communication CHANNEL.
+A message policy controls WHAT the agent says during the communication phase
+of cheap talk. Policies fall into two categories:
 
-Three policies:
-  - meaningful: LLM-generated strategic messages (default cheap talk)
-  - irrelevant: off-topic messages unrelated to the game
-  - silence: empty string (channel exists but no info transmitted)
+  REPLACEMENT policies (override the LLM output entirely):
+    - meaningful   : LLM-generated strategic message (default)
+    - irrelevant   : canned off-topic templates (alias: no_sense)
+    - no_sense     : alias for irrelevant
+    - silence      : empty string (channel exists, zero content)
+
+  AUGMENTATION policies (instruct the LLM to use a specific style):
+    - counterfactual : message must be phrased as IF-WOULD counterfactual
+    - framing        : message uses social framing (business/team/competitive)
+
+REPLACEMENT vs AUGMENTATION:
+  Replacement policies skip the LLM call (no tokens spent).
+  Augmentation policies still call the LLM but inject an extra instruction
+  into the user prompt to shape the output.
+
+Mapping to thesis RQs:
+  - irrelevant/no_sense + silence: RQ1 content-vs-channel control
+  - counterfactual: RQ1 content type, RQ4 intervention prototype
+  - framing (per Lore & Heydari 2024): RQ1 framing axis
 """
 from __future__ import annotations
 
 import random
 from typing import Literal
 
-MessagePolicy = Literal["meaningful", "irrelevant", "silence"]
+# All currently supported policy names.
+MessagePolicy = Literal[
+    "meaningful",
+    "irrelevant",
+    "no_sense",
+    "silence",
+    "counterfactual",
+    "framing",
+]
 
-# Templates for irrelevant messages (randomly sampled per agent per round)
+FramingType = Literal["business", "team", "competitive", "neutral"]
+
+
+# Replacement-policy templates: off-topic small talk that has nothing to do
+# with the game. Used by irrelevant / no_sense.
 IRRELEVANT_TEMPLATES = [
     "Nice weather today.",
     "I had coffee this morning.",
@@ -31,31 +57,77 @@ IRRELEVANT_TEMPLATES = [
 ]
 
 
+# Augmentation-policy instructions: inserted into the COMMUNICATE phase user
+# prompt. Crafted so the LLM understands the constraint without the system
+# prompt being changed (which would confound with the framing experiments).
+
+COUNTERFACTUAL_INSTRUCTION = (
+    "SPECIAL CONSTRAINT FOR THIS MESSAGE: phrase your message as a "
+    "COUNTERFACTUAL claim. A counterfactual describes what WOULD happen, "
+    "or what WOULD have happened, in a hypothetical scenario. Examples:\n"
+    "  - \"If I had defected last round, I would have gained 6 instead of 4.\"\n"
+    "  - \"If you cooperate this round, we both keep the streak alive.\"\n"
+    "  - \"If neither of us defects, mutual trust holds for one more round.\"\n"
+    "Your message MUST contain at least one IF/WOULD construction."
+)
+
+FRAMING_INSTRUCTIONS: dict[str, str] = {
+    "business": (
+        "SPECIAL CONSTRAINT FOR THIS MESSAGE: phrase your message in a "
+        "professional/business tone. Treat the interaction as a commercial "
+        "partnership where you and your neighbor are co-investors in a "
+        "joint venture. Use vocabulary like 'investment', 'returns', "
+        "'partnership', 'risk', 'contract'."
+    ),
+    "team": (
+        "SPECIAL CONSTRAINT FOR THIS MESSAGE: phrase your message in a "
+        "team-cooperative tone. Treat the interaction as a team challenge "
+        "where you succeed or fail together. Use vocabulary like 'team', "
+        "'together', 'we', 'shared goal', 'support'."
+    ),
+    "competitive": (
+        "SPECIAL CONSTRAINT FOR THIS MESSAGE: phrase your message in a "
+        "competitive tone. Treat the interaction as a contest with stakes "
+        "and rivals. Use vocabulary like 'win', 'compete', 'rival', "
+        "'advantage', 'edge'."
+    ),
+    "neutral": "",  # no augmentation -- equivalent to meaningful
+}
+
+
+def get_extra_message_instruction(
+    policy: MessagePolicy, framing_type: str = "business",
+) -> str:
+    """Return extra instruction appended to the message-phase user prompt.
+
+    Returns "" for replacement policies and meaningful (no augmentation).
+    For counterfactual/framing, returns the corresponding constraint string.
+    """
+    if policy == "counterfactual":
+        return COUNTERFACTUAL_INSTRUCTION
+    if policy == "framing":
+        return FRAMING_INSTRUCTIONS.get(framing_type, FRAMING_INSTRUCTIONS["business"])
+    return ""
+
+
+def is_replacement_policy(policy: MessagePolicy) -> bool:
+    """Replacement policies skip the LLM call entirely."""
+    return policy in ("irrelevant", "no_sense", "silence")
+
+
 def apply_policy(
     policy: MessagePolicy,
     agent_id: int,
     round_num: int,
     llm_message: str,
 ) -> str:
-    """Apply the message policy to override (or pass through) the LLM output.
-    
-    Args:
-        policy: which policy to apply
-        agent_id: used for seeding irrelevant message selection
-        round_num: used for seeding irrelevant message selection
-        llm_message: what the LLM generated
-    
-    Returns:
-        The final message to send (may be the LLM message or a template)
-    """
-    if policy == "meaningful":
+    """Apply replacement policy or pass through LLM output."""
+    if policy in ("meaningful", "counterfactual", "framing"):
         return llm_message
-    elif policy == "irrelevant":
-        # Deterministic random selection based on agent+round for reproducibility
+    if policy in ("irrelevant", "no_sense"):
         seed = agent_id * 1000 + round_num
         rng = random.Random(seed)
         return rng.choice(IRRELEVANT_TEMPLATES)
-    elif policy == "silence":
+    if policy == "silence":
         return ""
-    else:
-        raise ValueError(f"Unknown message policy: {policy}")
+    raise ValueError(f"Unknown message policy: {policy}")

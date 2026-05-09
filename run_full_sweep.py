@@ -9,17 +9,32 @@ Saves results to:
     {out_dir}/no_comm/{ts}_{game}_nocomm_run{NN}.json
     {out_dir}/cheap_talk/{ts}_{game}_cheaptalk_run{NN}.json
 
-Usage examples:
+Usage examples (each scenario is one command, run separately per model):
 
-    # Kaggle / Colab / local GPU - default model is Qwen2.5-7B (not gated):
-    python run_full_sweep.py --provider local --out-dir results/qwen2.5-7b
-
-    # Specific gated model (need HF token + accepted Meta license):
+    # Baseline cheap-talk (default meaningful messages):
     python run_full_sweep.py --provider local \
-        --model-id meta-llama/Llama-3.1-8B-Instruct \
-        --out-dir results/llama-3.1-8b
+        --model-id Qwen/Qwen2.5-7B-Instruct \
+        --out-dir results/qwen-2.5-7b/baseline
 
-    # Smoke test before committing 4 hours of GPU time:
+    # No-sense (channel-only ablation):
+    python run_full_sweep.py --provider local \
+        --model-id Qwen/Qwen2.5-7B-Instruct \
+        --message-policy no_sense --conditions cheap_talk \
+        --out-dir results/qwen-2.5-7b/no_sense
+
+    # Counterfactual messages:
+    python run_full_sweep.py --provider local \
+        --model-id Qwen/Qwen2.5-7B-Instruct \
+        --message-policy counterfactual --conditions cheap_talk \
+        --out-dir results/qwen-2.5-7b/counterfactual
+
+    # Framing (business / team / competitive):
+    python run_full_sweep.py --provider local \
+        --model-id Qwen/Qwen2.5-7B-Instruct \
+        --message-policy framing --framing-type business --conditions cheap_talk \
+        --out-dir results/qwen-2.5-7b/framing_business
+
+    # Smoke test (fits in ~5 min):
     python run_full_sweep.py --provider local --quick \
         --out-dir results/smoke
 """
@@ -60,6 +75,18 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--conditions", nargs="+",
                    default=["no_comm", "cheap_talk"],
                    choices=["no_comm", "cheap_talk"])
+    # ---- Cheap-talk message-content controls (only applied when
+    #      "cheap_talk" is in --conditions). Default policy is "meaningful".
+    p.add_argument("--message-policy",
+                   choices=["meaningful", "irrelevant", "no_sense",
+                            "silence", "counterfactual", "framing"],
+                   default="meaningful",
+                   help="Cheap-talk message-content policy. See "
+                        "message_policies.py for full descriptions.")
+    p.add_argument("--framing-type",
+                   choices=["business", "team", "competitive", "neutral"],
+                   default="business",
+                   help="Sub-knob for --message-policy framing.")
     return p.parse_args()
 
 
@@ -67,7 +94,6 @@ def main():
     args = parse_args()
     model_id = args.model_id or DEFAULT_MODELS[args.provider]
 
-    # Sensible default delays per provider; 0 for local (no rate limit).
     if args.request_delay is not None:
         request_delay = args.request_delay
     elif args.provider == "groq":
@@ -81,6 +107,12 @@ def main():
     n_rounds = 8 if args.quick else args.n_rounds
 
     print(f"=== Building client for {args.provider}:{model_id} ===")
+    if "cheap_talk" in args.conditions:
+        if args.message_policy == "framing":
+            print(f"=== Cheap-talk policy: framing ({args.framing_type}) ===")
+        else:
+            print(f"=== Cheap-talk policy: {args.message_policy} ===")
+
     model_cfg = ModelConfig(
         provider=args.provider,
         model_id=model_id,
@@ -112,6 +144,8 @@ def main():
                 memory_window=args.memory_window,
                 model=model_cfg,
                 message_max_words=args.message_max_words,
+                message_policy=args.message_policy,
+                framing_type=args.framing_type,
                 out_dir=args.out_dir,
             )
             engine = make_engine(cfg)
