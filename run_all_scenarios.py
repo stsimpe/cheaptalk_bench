@@ -1,50 +1,20 @@
 """Run ALL 7 cheap-talk scenarios in ONE process for ONE model.
 
-Loads the model exactly once (huge time-saver vs running run_full_sweep.py
-seven times -- saves ~2 min x 6 = 12 min of reload + cold-start overhead).
+Loads the model exactly once and saves a zip after EACH scenario, so a
+mid-run session crash only loses the in-progress scenario's data.
 
-Scenarios executed in order:
-  1. baseline             : no_comm + cheap_talk(meaningful)   [pd, sh]
-  2. no_sense             : cheap_talk(no_sense)                [pd, sh]
-  3. silence              : cheap_talk(silence)                 [pd, sh]
-  4. counterfactual       : cheap_talk(counterfactual)          [pd, sh]
-  5. framing_business     : cheap_talk(framing, business)       [pd, sh]
-  6. framing_team         : cheap_talk(framing, team)           [pd, sh]
-  7. framing_competitive  : cheap_talk(framing, competitive)    [pd, sh]
-
-Each scenario writes JSONs into:
-    {out_dir_base}/{scenario}/no_comm/   (only baseline; other scenarios skip no_comm)
-    {out_dir_base}/{scenario}/cheap_talk/
-
-Total LLM calls per model (5 runs x 16 rounds defaults):
-  - baseline       : 64 + 128 = 192 calls/game x 2 games = 1,920 calls
-  - no_sense       :   0 (template replacement, no LLM)
-  - silence        :   0 (empty message, no LLM)
-  - counterfactual : 128 calls/game x 2 = 1,280 calls
-  - framing x 3    : 1,280 calls each x 3 = 3,840 calls
-  TOTAL per model  : ~7,040 calls. On a T4 with 7B in 4-bit, ~5-6 hours.
-
-Usage:
-    # Smoke test (2x8, all 7 scenarios, ~10-15 min)
-    python run_all_scenarios.py --provider local \
-        --model-id Qwen/Qwen2.5-7B-Instruct \
-        --out-dir-base results/qwen-2.5-7b --quick
-
-    # Full sweep, all 7 scenarios
-    python run_all_scenarios.py --provider local \
-        --model-id Qwen/Qwen2.5-7B-Instruct \
-        --out-dir-base results/qwen-2.5-7b
-
-    # Skip baseline if already done in a previous session
-    python run_all_scenarios.py --provider local \
-        --model-id Qwen/Qwen2.5-7B-Instruct \
-        --out-dir-base results/qwen-2.5-7b --skip-baseline
+Outputs:
+    {out_dir_base}/{scenario}/{condition}/...json
+    {out_dir_base}/zips/{scenario}.zip      <-- written as each scenario finishes
+    {out_dir_base}/zips/_progress.json      <-- live progress log
+    {out_dir_base}/all_results.zip          <-- final combined zip (after all done)
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import shutil
 import sys
 import time
 from datetime import datetime
@@ -54,7 +24,6 @@ from engine import make_engine
 from llm_client import make_client, preflight_probe, TokenBudgetExceeded
 
 
-# Scenario manifest. Each tuple: (label, conditions, message_policy, framing_type).
 SCENARIOS: list[tuple[str, list[str], str, str]] = [
     ("baseline",            ["no_comm", "cheap_talk"], "meaningful",     "neutral"),
     ("no_sense",            ["cheap_talk"],            "no_sense",       "neutral"),
@@ -79,22 +48,45 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--message-max-words", type=int, default=20)
     p.add_argument("--temperature", type=float, default=0.7)
     p.add_argument("--request-delay", type=float, default=None)
-    p.add_argument("--out-dir-base", default="results",
-                   help="Each scenario gets a subfolder under this dir.")
+    p.add_argument("--out-dir-base", default="results")
     p.add_argument("--no-probe", action="store_true")
-    p.add_argument("--quick", action="store_true",
-                   help="Reduced pilot: 2 runs x 8 rounds for smoke testing.")
+    p.add_argument("--quick", action="store_true")
     p.add_argument("--scenarios", nargs="+", default=None,
-                   choices=[s[0] for s in SCENARIOS],
-                   help="Only run these scenarios (default: all 7).")
-    p.add_argument("--skip-baseline", action="store_true",
-                   help="Skip the baseline scenario if you've already run it.")
+                   choices=[s[0] for s in SCENARIOS])
+    p.add_argument("--skip-baseline", action="store_true")
+    p.add_argument("--zip-after-each", action="store_true", default=True,
+                   help="Write a per-scenario zip after each scenario finishes.")
+    p.add_argument("--zip-mirror", default=None,
+                   help="Extra location to ALSO copy zips to (e.g. /kaggle/working). "
+                        "Helps when out-dir-base is somewhere ephemeral.")
     return p.parse_args()
+
+
+def write_progress(progress_path: str, payload: dict) -> None:
+    """Atomic-ish JSON write. Survives kill mid-write better than open+write."""
+    tmp = progress_path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(payload, f, indent=2)
+    os.replace(tmp, progress_path)
+
+
+def zip_scenario(scenario_dir: str, zip_path: str, mirror: str | None) -> None:
+    """Zip a scenario folder. Optionally also copy to a mirror location."""
+    if not os.path.exists(scenario_dir):
+        return
+    shutil.make_archive(zip_path, "zip", scenario_dir)
+    print(f"    [zip] saved: {zip_path}.zip")
+    if mirror:
+        os.makedirs(mirror, exist_ok=True)
+        dst = os.path.join(mirror, os.path.basename(zip_path) + ".zip")
+        shutil.copy(zip_path + ".zip", dst)
+        print(f"    [zip] mirrored to: {dst}")
 
 
 def main():
     args = parse_args()
     model_id = args.model_id or DEFAULT_MODELS[args.provider]
+
     if args.request_delay is not None:
         request_delay = args.request_delay
     elif args.provider == "groq":
@@ -107,18 +99,23 @@ def main():
     n_runs = 2 if args.quick else args.n_runs
     n_rounds = 8 if args.quick else args.n_rounds
 
-    # Filter scenarios
     selected = SCENARIOS
     if args.scenarios:
         selected = [s for s in SCENARIOS if s[0] in args.scenarios]
     if args.skip_baseline:
         selected = [s for s in selected if s[0] != "baseline"]
 
-    print(f"=== Model: {args.provider}:{model_id} ===")
-    print(f"=== Scenarios planned: {[s[0] for s in selected]} ===")
-    print(f"=== Per scenario: {n_runs} runs x {n_rounds} rounds, games=[pd,sh] ===\n")
+    os.makedirs(args.out_dir_base, exist_ok=True)
+    zips_dir = os.path.join(args.out_dir_base, "zips")
+    os.makedirs(zips_dir, exist_ok=True)
+    progress_path = os.path.join(zips_dir, "_progress.json")
 
-    # BUILD CLIENT ONCE (this is the main reason this script exists).
+    print(f"=== Model: {args.provider}:{model_id} ===")
+    print(f"=== Scenarios: {[s[0] for s in selected]} ===")
+    print(f"=== Per scenario: {n_runs} runs x {n_rounds} rounds, games=[pd,sh] ===")
+    print(f"=== Output: {args.out_dir_base} ===")
+    print(f"=== Per-scenario zips: {zips_dir} ===\n")
+
     model_cfg = ModelConfig(
         provider=args.provider,
         model_id=model_id,
@@ -138,29 +135,34 @@ def main():
             sys.exit(2)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    progress = {
+        "started_at": ts, "model": model_id, "scenarios_planned": [s[0] for s in selected],
+        "scenarios_done": [], "current_scenario": None, "session_tokens": 0,
+    }
+    write_progress(progress_path, progress)
+
     grand_total_runs = 0
 
     for sc_label, conditions, policy, framing_type in selected:
         sc_out_dir = os.path.join(args.out_dir_base, sc_label)
+        progress["current_scenario"] = sc_label
+        write_progress(progress_path, progress)
+
         print("\n" + "#" * 70)
         print(f"# SCENARIO: {sc_label}  (policy={policy}"
               f"{', framing=' + framing_type if policy == 'framing' else ''})")
         print(f"# Output: {sc_out_dir}")
         print("#" * 70)
 
+        scenario_started_runs = grand_total_runs
         for game in ["pd", "sh"]:
             for condition in conditions:
                 cfg = ExperimentConfig(
-                    game=game,
-                    condition=condition,
-                    n_agents=args.n_agents,
-                    n_rounds=n_rounds,
-                    n_runs=n_runs,
-                    memory_window=args.memory_window,
-                    model=model_cfg,
+                    game=game, condition=condition,
+                    n_agents=args.n_agents, n_rounds=n_rounds, n_runs=n_runs,
+                    memory_window=args.memory_window, model=model_cfg,
                     message_max_words=args.message_max_words,
-                    message_policy=policy,
-                    framing_type=framing_type,
+                    message_policy=policy, framing_type=framing_type,
                     out_dir=sc_out_dir,
                 )
                 engine = make_engine(cfg)
@@ -174,7 +176,13 @@ def main():
                         record = engine.run_one(run_id=run_id, client=client)
                     except TokenBudgetExceeded as e:
                         print(f"\n[STOP] {e}")
-                        print(f"  Already saved: {grand_total_runs} runs total.")
+                        # Try to save what we have so far for this scenario.
+                        if args.zip_after_each:
+                            zip_scenario(
+                                sc_out_dir,
+                                os.path.join(zips_dir, sc_label + "_PARTIAL"),
+                                args.zip_mirror,
+                            )
                         sys.exit(2)
                     cond_short = "nocomm" if condition == "no_comm" else "cheaptalk"
                     fname = f"{ts}_{game}_{cond_short}_run{run_id:02d}.json"
@@ -182,12 +190,41 @@ def main():
                         json.dump(record, f, indent=2)
                     grand_total_runs += 1
                     tok = getattr(client, 'session_tokens', 0)
+                    progress["session_tokens"] = tok
+                    progress["last_save"] = os.path.join(cond_dir, fname)
+                    write_progress(progress_path, progress)
                     print(f"    saved -> {fname}  (tokens: {tok:,})")
 
-    final_tok = getattr(client, 'session_tokens', 0)
+        # Scenario finished -- zip it NOW so a later crash can't lose it.
+        runs_in_scenario = grand_total_runs - scenario_started_runs
+        if args.zip_after_each:
+            zip_scenario(
+                sc_out_dir,
+                os.path.join(zips_dir, sc_label),
+                args.zip_mirror,
+            )
+        progress["scenarios_done"].append({
+            "name": sc_label, "runs": runs_in_scenario,
+            "tokens_so_far": getattr(client, "session_tokens", 0),
+        })
+        progress["current_scenario"] = None
+        write_progress(progress_path, progress)
+        print(f"  [scenario done] {sc_label}: {runs_in_scenario} runs saved + zipped")
+
+    # All scenarios done -- combined zip
+    final_zip = os.path.join(args.out_dir_base, "all_results")
+    shutil.make_archive(final_zip, "zip", args.out_dir_base)
+    print(f"\n=== Combined zip: {final_zip}.zip ===")
+    if args.zip_mirror:
+        os.makedirs(args.zip_mirror, exist_ok=True)
+        dst = os.path.join(args.zip_mirror, "all_results.zip")
+        shutil.copy(final_zip + ".zip", dst)
+        print(f"=== Mirrored to: {dst} ===")
+
+    final_tok = getattr(client, "session_tokens", 0)
     elapsed = time.time() - t0
     print(f"\n{'#' * 70}")
-    print(f"# DONE: {grand_total_runs} total runs across {len(selected)} scenarios.")
+    print(f"# DONE: {grand_total_runs} runs across {len(selected)} scenarios.")
     print(f"# Elapsed: {elapsed/60:.1f} min ({elapsed/3600:.2f} h)")
     print(f"# Total tokens: {final_tok:,}")
     print(f"{'#' * 70}")
