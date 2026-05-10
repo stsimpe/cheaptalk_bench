@@ -46,7 +46,7 @@ class ModelConfig:
     provider: Provider = "groq"
     model_id: str = "llama-3.1-8b-instant"
     temperature: float = 0.7
-    max_tokens: int = 320
+    max_tokens: int = 512
     request_delay_s: float = 3.0
     max_retries: int = 4
 

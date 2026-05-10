@@ -40,6 +40,14 @@ JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
 ACTION_FIELD_RE = re.compile(r'"action"\s*:\s*"([^"]+)"', re.IGNORECASE)
 MESSAGE_FIELD_RE = re.compile(r'"message"\s*:\s*"([^"]+)"', re.IGNORECASE)
 
+# Reasoning-model marker tags (Qwen3, DeepSeek-R1, etc.). Some models emit
+# <think>...</think> blocks before the JSON envelope; if max_tokens is hit
+# inside the thinking block, no JSON ever appears. We strip these tags
+# before parsing so the rest of the pipeline still finds the JSON when it
+# does come out.
+THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+THINK_OPEN_ONLY_RE = re.compile(r"<think>.*", re.DOTALL | re.IGNORECASE)
+
 
 def _repair_unescaped_newlines(text: str) -> str:
     """Escape literal \\n / \\r characters that appear INSIDE JSON string values.
@@ -86,6 +94,16 @@ def extract_json(text: str) -> dict:
 
     Raises ValueError only if even the regex-based field extraction fails.
     """
+    # Strategy 0: drop <think>...</think> blocks (reasoning models).
+    # If max_tokens cut off mid-thinking and the </think> tag is missing,
+    # we drop everything from the first <think> onward -- there is no JSON
+    # to find anyway and we want a fast fail rather than dumping the whole
+    # chain-of-thought into the parse error.
+    if "<think>" in text.lower():
+        text = THINK_BLOCK_RE.sub("", text)
+        if "<think>" in text.lower():
+            text = THINK_OPEN_ONLY_RE.sub("", text)
+
     # Strategy 1: standard parse
     try:
         return json.loads(text.strip())
@@ -155,12 +173,22 @@ class Agent:
         """Try to parse JSON; if it fails, return a sentinel and True for `failed`.
 
         The engine treats failed parses as invalid actions but does NOT crash.
+        Parse-error details are appended to ./parse_errors.log (cwd) so the
+        cell output stays clean -- the user only sees a one-liner.
         """
         try:
             parsed = extract_json(raw)
             return parsed, False
-        except ValueError as e:
-            print(f"    [parse error] agent {self.agent_id}: {e}")
+        except ValueError:
+            preview = raw.strip().replace("\n", " ")[:80]
+            print(f"    [parse error] agent {self.agent_id}: {preview!r}...")
+            try:
+                with open("parse_errors.log", "a") as f:
+                    f.write(f"=== agent {self.agent_id} | field={expected_field} ===\n")
+                    f.write(raw)
+                    f.write("\n\n")
+            except Exception:
+                pass
             return {"reasoning": "[unparseable]", expected_field: ""}, True
 
     # --- No-communication path ---
