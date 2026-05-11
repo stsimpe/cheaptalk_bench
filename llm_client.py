@@ -231,9 +231,20 @@ class LocalTransformersClient(LLMClient):
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
-        prompt = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True,
-        )
+        # Qwen3 / DeepSeek-R1 / etc. tokenizers accept enable_thinking=False
+        # to skip the <think> block entirely. This produces a direct JSON
+        # answer instead of long chain-of-thought that often gets cut off
+        # by max_tokens. Older / non-reasoning tokenizers reject the kwarg
+        # with TypeError; we fall back gracefully in that case.
+        try:
+            prompt = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+                enable_thinking=False,
+            )
+        except TypeError:
+            prompt = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+            )
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
         prompt_tokens = inputs.input_ids.shape[1]
 
