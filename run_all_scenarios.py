@@ -47,6 +47,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--n-agents", type=int, default=4)
     p.add_argument("--message-max-words", type=int, default=20)
     p.add_argument("--temperature", type=float, default=0.7)
+    p.add_argument("--max-new-tokens", type=int, default=None,
+                   help="Override max output tokens per call. Default 512. "
+                        "Lower (e.g. 256) speeds up T4 inference 1.5-2x.")
     p.add_argument("--request-delay", type=float, default=None)
     p.add_argument("--out-dir-base", default="results")
     p.add_argument("--no-probe", action="store_true")
@@ -116,12 +119,15 @@ def main():
     print(f"=== Output: {args.out_dir_base} ===")
     print(f"=== Per-scenario zips: {zips_dir} ===\n")
 
-    model_cfg = ModelConfig(
+    model_cfg_kwargs = dict(
         provider=args.provider,
         model_id=model_id,
         temperature=args.temperature,
         request_delay_s=request_delay,
     )
+    if args.max_new_tokens is not None:
+        model_cfg_kwargs["max_tokens"] = args.max_new_tokens
+    model_cfg = ModelConfig(**model_cfg_kwargs)
     print("=== Loading model... ===")
     t0 = time.time()
     client = make_client(model_cfg)
