@@ -227,24 +227,40 @@ class LocalTransformersClient(LLMClient):
 
     def generate(self, system: str, user: str) -> str:
         torch = self._torch
+
+        def _merged_messages() -> list[dict]:
+            """For tokenizers without a system role (Gemma 2/3), prepend the
+            system prompt to the user message."""
+            return [{"role": "user", "content": f"{system}\n\n{user}"}]
+
+        def _try_render(messages: list[dict]) -> str:
+            # Qwen3 / DeepSeek-R1 / etc. accept enable_thinking=False to
+            # skip <think> blocks. Older / non-reasoning tokenizers reject
+            # the kwarg with TypeError; we fall back gracefully.
+            try:
+                return self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True,
+                    enable_thinking=False,
+                )
+            except TypeError:
+                return self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True,
+                )
+
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
-        # Qwen3 / DeepSeek-R1 / etc. tokenizers accept enable_thinking=False
-        # to skip the <think> block entirely. This produces a direct JSON
-        # answer instead of long chain-of-thought that often gets cut off
-        # by max_tokens. Older / non-reasoning tokenizers reject the kwarg
-        # with TypeError; we fall back gracefully in that case.
         try:
-            prompt = self.tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True,
-                enable_thinking=False,
-            )
-        except TypeError:
-            prompt = self.tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True,
-            )
+            prompt = _try_render(messages)
+        except Exception as e:
+            # Gemma chat template raises jinja2.TemplateError("System role not
+            # supported"). Some other templates raise ValueError. We catch both
+            # and retry with a merged user message.
+            if "system role" in str(e).lower() or "system" in str(e).lower():
+                prompt = _try_render(_merged_messages())
+            else:
+                raise
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
         prompt_tokens = inputs.input_ids.shape[1]
 
