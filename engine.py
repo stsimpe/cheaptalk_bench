@@ -26,18 +26,18 @@ from agent import Agent
 from config import ExperimentConfig, ModelConfig
 from games import Game, GAMES
 from llm_client import make_client
-from topology import StarTopology
+from topology import StarTopology, make_topology
 
 
 class GameEngine:
-    def __init__(self, game: Game, topology: StarTopology, condition: str, cfg: ExperimentConfig):
+    def __init__(self, game: Game, topology, condition: str, cfg: ExperimentConfig):
         self.game = game
         self.topology = topology
         self.condition = condition
         self.cfg = cfg
         self.valid_actions = set(game.action_labels)
 
-    def build_agents(self, client) -> list[Agent]:
+    def build_agents(self, client, run_id: int = 0) -> list[Agent]:
         agents: list[Agent] = []
         for i in range(self.topology.n_agents):
             neighbors = self.topology.neighbors(i)
@@ -54,6 +54,10 @@ class GameEngine:
                     memory_window=self.cfg.memory_window,
                     message_policy=self.cfg.message_policy,
                     framing_type=self.cfg.framing_type,
+                    context_framing=getattr(self.cfg, "context_framing", "none"),
+                    topology_text=self.topology.describe(i),
+                    noise_seed=self.cfg.seed + run_id,
+                    action_retries=getattr(self.cfg, "action_retries", 0),
                 )
             )
         return agents
@@ -135,7 +139,7 @@ class GameEngine:
         }
 
     def run_one(self, run_id: int, client) -> dict:
-        agents = self.build_agents(client)
+        agents = self.build_agents(client, run_id=run_id)
         history: list[dict] = []
         for r in range(1, self.cfg.n_rounds + 1):
             if self.condition == "no_comm":
@@ -156,11 +160,7 @@ class GameEngine:
         return {
             "run_id": run_id,
             "config": self.cfg.to_dict(),
-            "topology": {
-                "n_agents": self.topology.n_agents,
-                "hub_id": self.topology.hub_id,
-                "edges": self.topology.edges(),
-            },
+            "topology": self.topology.to_dict(),
             "game": self.game.name,
             "history": history,
         }
@@ -168,5 +168,5 @@ class GameEngine:
 
 def make_engine(cfg: ExperimentConfig) -> GameEngine:
     game = GAMES[cfg.game]
-    topo = StarTopology(n_agents=cfg.n_agents, hub_id=0)
+    topo = make_topology(getattr(cfg, "topology", "star"), n_agents=cfg.n_agents)
     return GameEngine(game=game, topology=topo, condition=cfg.condition, cfg=cfg)

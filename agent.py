@@ -25,6 +25,7 @@ from games import Game
 from llm_client import LLMClient
 from message_policies import (
     apply_policy, MessagePolicy,
+    get_context_framing_paragraph,
     get_extra_message_instruction, is_replacement_policy,
 )
 from prompts import (
@@ -153,6 +154,10 @@ class Agent:
     memory_window: int = 10     # Sabani §4.1.4: sliding window length
     message_policy: MessagePolicy = "meaningful"  # ablation control
     framing_type: str = "business"                # only used if message_policy == "framing"
+    context_framing: str = "none"     # system-prompt framing; works in no_comm too
+    topology_text: str | None = None  # per-topology prompt paragraph (None = star default)
+    noise_seed: int = 0               # varies per run; feeds the no_sense RNG
+    action_retries: int = 0           # resample once (or more) when the action is invalid
 
     def _system_prompt(self) -> str:
         return build_system_prompt(
@@ -161,6 +166,8 @@ class Agent:
             n_neighbors=self.n_neighbors,
             total_agents=self.total_agents,
             message_max_words=self.message_max_words,
+            topology_text=self.topology_text,
+            context_framing_text=get_context_framing_paragraph(self.context_framing),
         )
 
     def _history_text(self, history: list[dict]) -> str:
@@ -193,13 +200,30 @@ class Agent:
 
     # --- No-communication path ---
 
-    def choose_action_no_comm(self, history: list[dict], round_num: int) -> tuple[str, str]:
-        user = build_no_comm_user(self._history_text(history), round_num)
+    def _generate_action(self, user: str) -> tuple[str, str]:
+        """One or more attempts at a valid action.
+
+        With action_retries=0 this is exactly the old single-shot behavior.
+        With action_retries=N, an invalid (non-canonical) action triggers up
+        to N resamples before the invalid output is returned as-is, so the
+        invalid-rate metric still sees genuinely stubborn failures.
+        """
         raw = self.client.generate(self._system_prompt(), user)
         parsed, _failed = self._safe_extract(raw, "action")
-        action = str(parsed.get("action", "")).strip()
+        action = self._canonicalize_action(str(parsed.get("action", "")).strip())
         reasoning = str(parsed.get("reasoning", ""))
-        return self._canonicalize_action(action), reasoning
+        attempts = 0
+        while action not in self.game.action_labels and attempts < self.action_retries:
+            attempts += 1
+            raw = self.client.generate(self._system_prompt(), user)
+            parsed, _failed = self._safe_extract(raw, "action")
+            action = self._canonicalize_action(str(parsed.get("action", "")).strip())
+            reasoning = str(parsed.get("reasoning", ""))
+        return action, reasoning
+
+    def choose_action_no_comm(self, history: list[dict], round_num: int) -> tuple[str, str]:
+        user = build_no_comm_user(self._history_text(history), round_num)
+        return self._generate_action(user)
 
     # --- Cheap-talk path ---
 
@@ -207,7 +231,10 @@ class Agent:
         # Replacement policies (irrelevant/no_sense/silence) skip the LLM
         # call entirely -- they don't need any model output.
         if is_replacement_policy(self.message_policy):
-            return apply_policy(self.message_policy, self.agent_id, round_num, ""), ""
+            return apply_policy(
+                self.message_policy, self.agent_id, round_num, "",
+                noise_seed=self.noise_seed,
+            ), ""
 
         # Augmentation policies (counterfactual/framing) call the LLM but
         # inject an extra instruction into the user prompt to shape output.
@@ -225,7 +252,10 @@ class Agent:
         if len(words) > self.message_max_words:
             llm_message = " ".join(words[: self.message_max_words])
 
-        return apply_policy(self.message_policy, self.agent_id, round_num, llm_message), reasoning
+        return apply_policy(
+            self.message_policy, self.agent_id, round_num, llm_message,
+            noise_seed=self.noise_seed,
+        ), reasoning
 
     def choose_action_cheap_talk(
         self,
@@ -237,11 +267,7 @@ class Agent:
         user = build_ct_action_user(
             self._history_text(history), round_num, own_message, received_messages
         )
-        raw = self.client.generate(self._system_prompt(), user)
-        parsed, _failed = self._safe_extract(raw, "action")
-        action = str(parsed.get("action", "")).strip()
-        reasoning = str(parsed.get("reasoning", ""))
-        return self._canonicalize_action(action), reasoning
+        return self._generate_action(user)
 
     # --- Helpers ---
 

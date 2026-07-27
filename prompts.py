@@ -203,8 +203,16 @@ def build_system_prompt(
     n_neighbors: int,
     total_agents: int,
     message_max_words: int = 20,
+    topology_text: str | None = None,
+    context_framing_text: str = "",
 ) -> str:
-    topology = topology_description(n_neighbors, total_agents)
+    # topology_text comes from topology.describe(agent_id); the fallback keeps
+    # old call sites (and the 380 star runs) byte-identical.
+    topology = topology_text or topology_description(n_neighbors, total_agents)
+    # Context framing rides in right after the topology paragraph. Empty text
+    # (the default) leaves the system prompt byte-identical to the old one.
+    if context_framing_text:
+        topology = f"{topology}\n\n{context_framing_text}"
     payoff_matrix = game.describe_payoffs()
     kwargs = dict(
         topology=topology,

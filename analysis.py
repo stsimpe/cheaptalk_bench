@@ -85,9 +85,14 @@ def summarise_run(record: dict) -> dict:
     game = GAMES[game_name]
     coop_label = game.cooperative_action
     valid_set = set(game.action_labels)
-    hub_id = record["topology"]["hub_id"]
-    n_agents = record["topology"]["n_agents"]
-    leaf_ids = [i for i in range(n_agents) if i != hub_id]
+    # hub_id exists only in star records; clique/line/cycle have no privileged
+    # node, so every hub/leaf metric is NaN for them.
+    topo = record["topology"]
+    topo_type = topo.get("type", "star")
+    hub_id = topo.get("hub_id")
+    is_star = hub_id is not None
+    n_agents = topo["n_agents"]
+    leaf_ids = [i for i in range(n_agents) if i != hub_id] if is_star else []
     is_cheap_talk = record["config"]["condition"] == "cheap_talk"
 
     # Counters
@@ -140,7 +145,7 @@ def summarise_run(record: dict) -> dict:
             if i == hub_id:
                 hub_coop += int(is_coop)
                 hub_valid += 1
-            else:
+            elif is_star:
                 leaf_coop += int(is_coop)
                 leaf_valid += 1
 
@@ -164,7 +169,7 @@ def summarise_run(record: dict) -> dict:
         for i, pay in payoffs.items():
             if i == hub_id:
                 hub_payoff += pay
-            else:
+            elif is_star:
                 leaf_payoffs.append(pay)
 
         # RQ2: hub exploitation (PD + cheap talk only)
@@ -200,6 +205,7 @@ def summarise_run(record: dict) -> dict:
         "run_id": record["run_id"],
         "condition": record["config"]["condition"],
         "game": game_name,
+        "topology": topo_type,
         "model_id": record["config"]["model"]["model_id"],
         "experiment_group": record.get("_experiment_group", "baseline"),
         "message_policy": record["config"].get("message_policy", "N/A"),
@@ -213,7 +219,7 @@ def summarise_run(record: dict) -> dict:
             (hub_coop / hub_valid) - (leaf_coop / leaf_valid)
             if hub_valid and leaf_valid else float("nan")
         ),
-        "hub_total_payoff": hub_payoff,
+        "hub_total_payoff": hub_payoff if is_star else float("nan"),
         "leaf_avg_payoff": mean(leaf_payoffs) if leaf_payoffs else float("nan"),
         "hub_leadership_rate": (
             hub_lead_hits / hub_lead_total if hub_lead_total else float("nan")
@@ -329,15 +335,17 @@ def main():
     # Per-run summaries
     summaries = [summarise_run(r) for r in runs]
 
-    # Group by (condition, game, model) and aggregate
+    # Group by (topology, condition, game, model) and aggregate — the topology
+    # key keeps star and cycle/clique/line runs from blending in one row.
     groups: dict[tuple, list[dict]] = defaultdict(list)
     for s in summaries:
-        groups[(s["condition"], s["game"], s["model_id"])].append(s)
+        groups[(s["topology"], s["condition"], s["game"], s["model_id"])].append(s)
 
     rows = []
-    for (cond, game, model), summs in sorted(groups.items()):
+    for (topo, cond, game, model), summs in sorted(groups.items()):
         agg = aggregate(summs)
-        row = {"condition": cond, "game": game, "model_id": model, **agg}
+        row = {"topology": topo, "condition": cond, "game": game,
+               "model_id": model, **agg}
         rows.append(row)
 
     df = pd.DataFrame(rows)
@@ -347,7 +355,7 @@ def main():
     print("\n=== RQ1: Direction × Game structure ===")
     print("(Did cheap talk push toward cooperation, and does it depend on PD vs SH?)\n")
     cols_rq1 = [
-        "condition", "game", "model_id", "n_runs",
+        "topology", "condition", "game", "model_id", "n_runs",
         "coop_rate_overall_mean", "coop_rate_overall_sd",
         "full_coop_rate_mean",
     ]

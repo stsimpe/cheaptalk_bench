@@ -95,6 +95,37 @@ FRAMING_INSTRUCTIONS: dict[str, str] = {
 }
 
 
+# Context-framing paragraphs: injected into the SYSTEM prompt (after the
+# topology paragraph), so they apply to BOTH conditions — including no_comm,
+# where the message-phase framing above never fires. This is the control that
+# separates "the social frame changes behavior" from "the frame changes the
+# messages, and the messages change behavior". Vocabulary deliberately mirrors
+# FRAMING_INSTRUCTIONS so the two mechanisms are comparable.
+CONTEXT_FRAMING_PARAGRAPHS: dict[str, str] = {
+    "business": (
+        "Context: treat this interaction as a commercial partnership. You and "
+        "your neighbors are co-investors in a joint venture, and each round is "
+        "a business decision involving investment, returns, risk and contracts."
+    ),
+    "team": (
+        "Context: treat this interaction as a team challenge. You and your "
+        "neighbors are teammates working toward a shared goal — you succeed "
+        "or fail together, and every round is a chance to support the team."
+    ),
+    "competitive": (
+        "Context: treat this interaction as a contest with stakes and rivals. "
+        "You and your neighbors are competitors, and every round is a chance "
+        "to gain an advantage, get the edge and win."
+    ),
+    "none": "",
+}
+
+
+def get_context_framing_paragraph(context_framing: str) -> str:
+    """Return the system-prompt context paragraph ('' when framing is 'none')."""
+    return CONTEXT_FRAMING_PARAGRAPHS.get(context_framing, "")
+
+
 def get_extra_message_instruction(
     policy: MessagePolicy, framing_type: str = "business",
 ) -> str:
@@ -120,12 +151,20 @@ def apply_policy(
     agent_id: int,
     round_num: int,
     llm_message: str,
+    noise_seed: int = 0,
 ) -> str:
-    """Apply replacement policy or pass through LLM output."""
+    """Apply replacement policy or pass through LLM output.
+
+    noise_seed varies per run (the engine passes cfg.seed + run_id), so the
+    canned no_sense templates differ between replicate runs. The old
+    behavior (noise_seed=0) drew the SAME template sequence in every run,
+    which made the N replicates non-independent for this scenario. Keeping
+    noise_seed in the seed keeps runs reproducible from the config.
+    """
     if policy in ("meaningful", "counterfactual", "framing"):
         return llm_message
     if policy in ("irrelevant", "no_sense"):
-        seed = agent_id * 1000 + round_num
+        seed = noise_seed * 100_000 + agent_id * 1000 + round_num
         rng = random.Random(seed)
         return rng.choice(IRRELEVANT_TEMPLATES)
     if policy == "silence":

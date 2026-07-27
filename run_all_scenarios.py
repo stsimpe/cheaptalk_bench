@@ -24,14 +24,24 @@ from engine import make_engine
 from llm_client import make_client, preflight_probe, TokenBudgetExceeded
 
 
-SCENARIOS: list[tuple[str, list[str], str, str]] = [
-    ("baseline",            ["no_comm", "cheap_talk"], "meaningful",     "neutral"),
-    ("no_sense",            ["cheap_talk"],            "no_sense",       "neutral"),
-    ("silence",             ["cheap_talk"],            "silence",        "neutral"),
-    ("counterfactual",      ["cheap_talk"],            "counterfactual", "neutral"),
-    ("framing_business",    ["cheap_talk"],            "framing",        "business"),
-    ("framing_team",        ["cheap_talk"],            "framing",        "team"),
-    ("framing_competitive", ["cheap_talk"],            "framing",        "competitive"),
+# (label, conditions, message_policy, framing_type, context_framing)
+#
+# The framing_* scenarios shape only the MESSAGES (message-phase instruction),
+# so they exist only under cheap_talk. The framing_*_context scenarios put the
+# framing in the SYSTEM prompt instead, which makes framing-without-cheap-talk
+# testable: their no_comm arm isolates the effect of the social frame itself,
+# and their cheap_talk arm gives the clean framed-context x communication cell.
+SCENARIOS: list[tuple[str, list[str], str, str, str]] = [
+    ("baseline",            ["no_comm", "cheap_talk"], "meaningful",     "neutral",     "none"),
+    ("no_sense",            ["cheap_talk"],            "no_sense",       "neutral",     "none"),
+    ("silence",             ["cheap_talk"],            "silence",        "neutral",     "none"),
+    ("counterfactual",      ["cheap_talk"],            "counterfactual", "neutral",     "none"),
+    ("framing_business",    ["cheap_talk"],            "framing",        "business",    "none"),
+    ("framing_team",        ["cheap_talk"],            "framing",        "team",        "none"),
+    ("framing_competitive", ["cheap_talk"],            "framing",        "competitive", "none"),
+    ("framing_business_context",    ["no_comm", "cheap_talk"], "meaningful", "neutral", "business"),
+    ("framing_team_context",        ["no_comm", "cheap_talk"], "meaningful", "neutral", "team"),
+    ("framing_competitive_context", ["no_comm", "cheap_talk"], "meaningful", "neutral", "competitive"),
 ]
 
 
@@ -45,6 +55,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--n-rounds", type=int, default=16)
     p.add_argument("--memory-window", type=int, default=10)
     p.add_argument("--n-agents", type=int, default=4)
+    p.add_argument("--topology", choices=["star", "clique", "line", "cycle"],
+                   default="star",
+                   help="Network topology. The star is the original design; "
+                        "clique, line and cycle are the RQ2 comparison cases.")
+    p.add_argument("--action-retries", type=int, default=0,
+                   help="Resample an invalid action up to N times before "
+                        "recording it as invalid. Use 1 for the Gemma-2-2B "
+                        "cleanup runs.")
     p.add_argument("--message-max-words", type=int, default=20)
     p.add_argument("--temperature", type=float, default=0.7)
     p.add_argument("--max-new-tokens", type=int, default=None,
@@ -89,6 +107,11 @@ def zip_scenario(scenario_dir: str, zip_path: str, mirror: str | None) -> None:
 def main():
     args = parse_args()
     model_id = args.model_id or DEFAULT_MODELS[args.provider]
+
+    # Keep non-star data in its own tree so star aggregations never mix in
+    # clique/line runs by accident.
+    if args.topology != "star" and not args.out_dir_base.endswith(args.topology):
+        args.out_dir_base = f"{args.out_dir_base}_{args.topology}"
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -149,14 +172,15 @@ def main():
 
     grand_total_runs = 0
 
-    for sc_label, conditions, policy, framing_type in selected:
+    for sc_label, conditions, policy, framing_type, context_framing in selected:
         sc_out_dir = os.path.join(args.out_dir_base, sc_label)
         progress["current_scenario"] = sc_label
         write_progress(progress_path, progress)
 
         print("\n" + "#" * 70)
         print(f"# SCENARIO: {sc_label}  (policy={policy}"
-              f"{', framing=' + framing_type if policy == 'framing' else ''})")
+              f"{', framing=' + framing_type if policy == 'framing' else ''}"
+              f"{', context=' + context_framing if context_framing != 'none' else ''})")
         print(f"# Output: {sc_out_dir}")
         print("#" * 70)
 
@@ -165,10 +189,13 @@ def main():
             for condition in conditions:
                 cfg = ExperimentConfig(
                     game=game, condition=condition,
+                    topology=args.topology,
                     n_agents=args.n_agents, n_rounds=n_rounds, n_runs=n_runs,
                     memory_window=args.memory_window, model=model_cfg,
                     message_max_words=args.message_max_words,
                     message_policy=policy, framing_type=framing_type,
+                    context_framing=context_framing,
+                    action_retries=args.action_retries,
                     out_dir=sc_out_dir,
                 )
                 engine = make_engine(cfg)

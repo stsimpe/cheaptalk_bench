@@ -30,6 +30,11 @@ MessagePolicy = Literal[
 
 FramingType = Literal["business", "team", "competitive", "neutral"]
 
+# Context framing: a framing paragraph injected into the SYSTEM prompt, so it
+# applies in BOTH conditions (works without cheap talk). Distinct from the
+# message-phase "framing" policy, which only shapes the communicate prompt.
+ContextFraming = Literal["none", "business", "team", "competitive"]
+
 
 DEFAULT_MODELS: dict[str, str] = {
     "groq": "llama-3.1-8b-instant",
@@ -51,11 +56,15 @@ class ModelConfig:
     max_retries: int = 4
 
 
+TopologyName = Literal["star", "clique", "line", "cycle"]
+
+
 @dataclass
 class ExperimentConfig:
     """Top-level knobs for one full experiment (many runs of one condition)."""
     game: GameName = "pd"
     condition: ConditionName = "no_comm"
+    topology: TopologyName = "star"
     n_agents: int = 4
     n_rounds: int = 16
     n_runs: int = 5
@@ -66,6 +75,11 @@ class ExperimentConfig:
     message_policy: MessagePolicy = "meaningful"
     # Sub-knob: only used when message_policy == "framing".
     framing_type: FramingType = "business"
+    # System-prompt framing, independent of the message channel ("none" keeps
+    # every pre-existing scenario byte-identical).
+    context_framing: ContextFraming = "none"
+    # Resample an invalid action up to this many times (0 = old behavior).
+    action_retries: int = 0
     out_dir: str = "results"
 
     def to_dict(self) -> dict:
