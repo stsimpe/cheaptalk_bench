@@ -10,12 +10,20 @@ __pycache__/
 .venv/
 venv/
 
-# Experiment outputs (often large; commit only what you cite)
-results/no_comm/*.json
-results/cheap_talk/*.json
-results/aggregated_metrics.csv
+# Raw experiment outputs (large, and regenerated per campaign).
+# Analysis products we actually cite live in cross_model_output/ and ARE tracked.
+results/
+results_star/
+results_clique/
+results_line/
+results_cycle/
+*.zip
+
+# Runtime logs
+parse_errors.log
 
 # OS / IDE
 .DS_Store
 .vscode/
 .idea/
+*.code-workspace

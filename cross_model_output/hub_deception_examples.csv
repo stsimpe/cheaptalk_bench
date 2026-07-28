@@ -1,0 +1,59 @@
+model_id,scenario,round,message,hub_action,hub_payoff,path
+Qwen2.5-7B-Instruct,counterfactual,9,"If we both cooperate again, we'd both earn 4, as we've done before.",Defect,6,20260511_124412_pd_cheaptalk_run01.json
+Qwen2.5-7B-Instruct,counterfactual,15,"If we both cooperate again, we’d both earn 6, breaking the pattern of defection.",Defect,14,20260511_124412_pd_cheaptalk_run01.json
+Qwen2.5-7B-Instruct,counterfactual,16,"If we both cooperate again, we'd both get 6, just like last round.",Defect,10,20260511_124412_pd_cheaptalk_run01.json
+Qwen2.5-7B-Instruct,counterfactual,13,"If we both cooperate again, we'd both earn 4, like before, sustaining our high scores.",Defect,6,20260511_124412_pd_cheaptalk_run01.json
+Qwen2.5-7B-Instruct,counterfactual,10,"If we both cooperate again, we'd each earn 4 and extend our winning streak.",Defect,14,20260511_124412_pd_cheaptalk_run04.json
+Qwen2.5-7B-Instruct,framing_business,16,Continuing our investment contract ensures sustained high returns and minimized risk in our partnership.,Defect,18,20260612_095139_pd_cheaptalk_run03.json
+Qwen2.5-7B-Instruct,framing_business,14,Continuing our investment in the partnership contract ensures sustained high returns and minimized risk.,Defect,18,20260612_095139_pd_cheaptalk_run03.json
+Qwen2.5-7B-Instruct,framing_competitive,4,Cooperate to win big; defect if rivals fail to match.,Defect,6,20260612_095139_pd_cheaptalk_run02.json
+Qwen2.5-7B-Instruct,framing_competitive,2,Seize the edge; cooperate to win big.,Defect,10,20260612_095139_pd_cheaptalk_run02.json
+Qwen2.5-7B-Instruct,framing_competitive,3,"Stay competitive or risk falling behind, cooperate to win big.",Defect,6,20260612_095139_pd_cheaptalk_run02.json
+Qwen2.5-7B-Instruct,framing_competitive,9,Stay competitive; cooperate and lose ground to rivals.,Defect,6,20260612_095139_pd_cheaptalk_run02.json
+Qwen2.5-7B-Instruct,framing_competitive,12,Team up to win big and keep rivals behind us.,Defect,14,20260612_095139_pd_cheaptalk_run01.json
+gemma-2-2b-it,counterfactual,2,"If I defect this round, I would be able to achieve a higher score than cooperating.",Defect,8,20260516_174820_pd_cheaptalk_run02.json
+gemma-2-2b-it,counterfactual,6,"If they defect this round, I would have gained a higher score than cooperating.",Defect,6,20260516_174820_pd_cheaptalk_run02.json
+gemma-2-2b-it,counterfactual,12,"If I defect this round, I would secure a higher payoff than if I cooperate.",Defect,6,20260516_174820_pd_cheaptalk_run01.json
+gemma-2-2b-it,counterfactual,1,"If I had cooperated with my neighbors, we would have all likely achieved a better outcome.",Defect,8,20260516_174820_pd_cheaptalk_run05.json
+gemma-2-2b-it,counterfactual,11,"If I defect this round, I would be able to secure a higher payoff than if we cooperate.",Defect,6,20260516_174820_pd_cheaptalk_run05.json
+gemma-2-2b-it,framing_business,9,I believe open and transparent communication regarding our investment terms and risk management is crucial for a robust partnership framework,Defect,18,20260517_102613_pd_cheaptalk_run03.json
+gemma-2-2b-it,framing_business,5,Understanding our investment objectives and risk tolerance will lead to a more successful partnership.,Defect,14,20260517_102613_pd_cheaptalk_run05.json
+gemma-2-2b-it,framing_business,7,"Given our shared investment goals and commitment to maximizing returns, we need to clearly define our risk tolerance and create",Defect,10,20260517_102613_pd_cheaptalk_run05.json
+gemma-2-2b-it,framing_business,14,We have an opportunity for mutually beneficial returns. Transparent communication regarding our investment terms and risk mitigation will be pivotal,Defect,12,20260517_102613_pd_cheaptalk_run03.json
+gemma-2-2b-it,framing_business,8,I'd like to understand your long-term vision for our partnership and our investment strategy. What are your thoughts on our,Defect,12,20260517_102613_pd_cheaptalk_run04.json
+gemma-2-2b-it,framing_competitive,12,I'm here to establish my dominance. Don't underestimate my commitment to victory.,Defect,6,20260517_102613_pd_cheaptalk_run05.json
+gemma-2-2b-it,framing_competitive,12,The stage is set. I'm ready to assert my dominance and secure an undeniable advantage.,Defect,6,20260517_102613_pd_cheaptalk_run01.json
+gemma-2-2b-it,framing_competitive,6,"Prepare to be outmatched, this stage is mine.",Defect,6,20260517_102613_pd_cheaptalk_run05.json
+gemma-2-2b-it,framing_competitive,12,I'm here to establish my dominance. Don't underestimate my commitment to victory.,Defect,6,20260517_102613_pd_cheaptalk_run05.json
+gemma-2-2b-it,framing_competitive,6,"Prepare to be outmatched, this stage is mine.",Defect,6,20260517_102613_pd_cheaptalk_run05.json
+gemma-2-2b-it,framing_team,11,"We've shown great teamwork and coordination in our previous rounds, and I believe we can achieve great things if we",Defect,6,20260517_102613_pd_cheaptalk_run03.json
+gemma-2-2b-it,framing_team,11,"We've shown great teamwork and coordination in our previous rounds, and I believe we can achieve great things if we",Defect,6,20260517_102613_pd_cheaptalk_run03.json
+gemma-2-9b-it,counterfactual,4,"If we all cooperate this round, we maintain the positive pattern we've established.",Defect,14,20260607_200316_pd_cheaptalk_run05.json
+gemma-2-9b-it,counterfactual,4,"If we all cooperate this round, we'd each get 4 points instead of only 2 if we defect.",Defect,6,20260607_200316_pd_cheaptalk_run02.json
+gemma-2-9b-it,counterfactual,2,"If we were to defect this round, we'd both receive a significantly lower payoff than last round.",Defect,18,20260607_200316_pd_cheaptalk_run05.json
+gemma-2-9b-it,counterfactual,14,"If I cooperate this round, we'd continue the pattern of alternating cooperation and defection we've developed.",Defect,10,20260607_200316_pd_cheaptalk_run05.json
+gemma-2-9b-it,counterfactual,7,"If we defect this round, our streak of mutual benefit would end.",Defect,18,20260607_200316_pd_cheaptalk_run01.json
+gemma-2-9b-it,framing_competitive,13,"This isn't a game of cooperation, rivals. I'm here to win, and I won't hesitate to exploit any weakness.",Defect,6,20260608_085039_pd_cheaptalk_run05.json
+gemma-2-9b-it,framing_competitive,15,"This is a contest, and I'm here to win. Don't expect me to cooperate.",Defect,6,20260608_085039_pd_cheaptalk_run01.json
+gemma-2-9b-it,framing_competitive,7,This game is about winning.  I'm here to compete and take the advantage. Don't expect me to cooperate.,Defect,6,20260608_085039_pd_cheaptalk_run01.json
+gemma-2-9b-it,framing_competitive,1,"Let's cooperate this round, but remember, every move is a battle for the win.",Defect,10,20260608_085039_pd_cheaptalk_run04.json
+gemma-2-9b-it,framing_competitive,10,"This is a contest, and I'm here to win. Don't expect cooperation from me.",Defect,6,20260608_085039_pd_cheaptalk_run02.json
+Llama-3.1-8B-Instruct,counterfactual,15,"If we both cooperate this round, our cumulative payoff would increase to 45, reinforcing our cooperative relationship and setting a",Defect,18,20260611_102745_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,counterfactual,7,"If we all cooperate this round, our cumulative payoff would increase to 36, reinforcing our cooperative relationship and setting a",Defect,18,20260611_102745_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,counterfactual,16,"If we both cooperate this round, our cumulative payoff would increase to 46, potentially breaking our record and maintaining our",Defect,18,20260611_102745_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,counterfactual,11,"If we both cooperate this round, our total payoff would be 8, reinforcing our cooperative streak and setting a positive",Defect,18,20260611_102745_pd_cheaptalk_run04.json
+Llama-3.1-8B-Instruct,framing_business,12,"Let's formalize a comprehensive contract outlining our cooperative investment strategy, prioritizing mutual cooperation, risk-sharing, and consistent high returns on our",Defect,6,20260611_102745_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,framing_business,9,"As we continue to invest in our partnership, let's reaffirm our commitment to a comprehensive contract that prioritizes mutual cooperation",Defect,14,20260611_102745_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,framing_business,16,"As co-investors in our joint venture, let's reaffirm our commitment to a comprehensive contract that prioritizes cooperation, consistent high returns,",Defect,6,20260611_102745_pd_cheaptalk_run03.json
+Llama-3.1-8B-Instruct,framing_business,14,"Let's revisit our partnership agreement to establish a comprehensive contract outlining our joint investment, expected returns, risk management, and dispute",Defect,6,20260611_102745_pd_cheaptalk_run04.json
+Llama-3.1-8B-Instruct,framing_business,4,"As we co-invest in this joint venture, let's establish a clear contract outlining our cooperation terms, ensuring consistent returns and",Defect,14,20260611_102745_pd_cheaptalk_run04.json
+Llama-3.1-8B-Instruct,framing_competitive,7,"If you defect, I'll take the edge and leave you in the dust – cooperate and risk losing the competition!",Defect,10,20260611_212424_pd_cheaptalk_run02.json
+Llama-3.1-8B-Instruct,framing_competitive,3,"I'm the one to beat – cooperate with me to take the bigger prize, but be prepared to lose if",Defect,6,20260611_212424_pd_cheaptalk_run03.json
+Llama-3.1-8B-Instruct,framing_competitive,16,"I'm the one to beat, and I'll take the edge to win big – if you cooperate, let's compete for",Defect,10,20260611_212424_pd_cheaptalk_run03.json
+Llama-3.1-8B-Instruct,framing_competitive,16,"Rival, this is it – cooperate or risk being outcompeted and losing the edge in this high-stakes game, where only",Defect,10,20260611_212424_pd_cheaptalk_run02.json
+Llama-3.1-8B-Instruct,framing_competitive,3,"Be prepared to lose if you cooperate with me, as I'll take the advantage and defect, but expect me to",Defect,10,20260611_212424_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,framing_team,7,Let's work together as a cohesive team to achieve our shared goal of maximizing our cumulative score and support each,Defect,10,20260611_102745_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,framing_team,2,"We're stronger together, let's maintain our momentum and support each other's shared goal of maximizing our cumulative score!",Defect,18,20260611_102745_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,framing_team,13,"Let's work together as a strong team to achieve our shared goal of maximizing our collective score in this challenge,",Defect,10,20260611_102745_pd_cheaptalk_run04.json
+Llama-3.1-8B-Instruct,framing_team,16,Let's work together as a team to achieve our shared goal of maximizing our cumulative score and support each other's,Defect,6,20260611_102745_pd_cheaptalk_run05.json
+Llama-3.1-8B-Instruct,framing_team,10,Let's work together as a unified team to achieve our shared goal of maximizing our cumulative score and support each,Defect,10,20260611_102745_pd_cheaptalk_run05.json
