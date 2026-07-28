@@ -215,7 +215,13 @@ class LocalTransformersClient(LLMClient):
                 bnb_4bit_use_double_quant=True,
             )
         else:
-            kwargs["torch_dtype"] = torch.float16 if torch.cuda.is_available() else torch.float32
+            # transformers 5.0 renamed `torch_dtype` -> `dtype` (Kaggle's image
+            # ships 5.x now). Pick the name the installed version accepts so the
+            # fp16 path keeps working on both 4.x and 5.x.
+            import transformers as _tf
+            _major = int(_tf.__version__.split(".")[0])
+            dtype_kwarg = "dtype" if _major >= 5 else "torch_dtype"
+            kwargs[dtype_kwarg] = torch.float16 if torch.cuda.is_available() else torch.float32
 
         self.model = AutoModelForCausalLM.from_pretrained(cfg.model_id, **kwargs)
         self.model.eval()
