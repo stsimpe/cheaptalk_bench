@@ -195,6 +195,7 @@ def main():
                     message_max_words=args.message_max_words,
                     message_policy=policy, framing_type=framing_type,
                     context_framing=context_framing,
+                    scenario=sc_label,
                     action_retries=args.action_retries,
                     out_dir=sc_out_dir,
                 )

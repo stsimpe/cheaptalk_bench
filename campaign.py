@@ -112,27 +112,47 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
     return cmd
 
 
-def verify(result_dir: str, expected: int, topology: str) -> tuple[bool, dict]:
-    """Count the runs actually produced and check what topology they record."""
+def verify(result_dir: str, expected: int, topology: str,
+           scenarios: list[str] | None = None) -> tuple[bool, dict]:
+    """Check what was actually produced: count, topology, and scenario labels.
+
+    Each record now carries config["scenario"], so the label it claims can be
+    cross-checked against the directory it landed in and against what was
+    requested. That catches a run written under the wrong scenario before the
+    data reaches the analysis, where a mislabelled framing_*_context run would
+    quietly merge into baseline.
+    """
     files = [f for f in glob.glob(os.path.join(result_dir, "**", "*.json"), recursive=True)
              if not os.path.basename(f).startswith("_progress")]
     per_scenario: Counter = Counter()
     topologies: Counter = Counter()
     unreadable: list[str] = []
+    mislabelled: list[str] = []
     for f in files:
         try:
             with open(f, encoding="utf-8") as fh:
                 rec = json.load(fh)
             topologies[rec["topology"]["type"]] += 1
-            per_scenario[os.path.relpath(f, result_dir).split(os.sep)[0]] += 1
+            folder = os.path.relpath(f, result_dir).split(os.sep)[0]
+            per_scenario[folder] += 1
+            recorded = rec["config"].get("scenario", "")
+            if recorded and recorded != folder:
+                mislabelled.append(f"{f}: records {recorded!r}, sits in {folder!r}")
         except Exception:
             unreadable.append(f)
 
+    unexpected = sorted(set(per_scenario) - set(scenarios)) if scenarios else []
+    missing = sorted(set(scenarios) - set(per_scenario)) if scenarios else []
+
     report = {"found": len(files), "expected": expected,
               "per_scenario": dict(per_scenario), "topologies": dict(topologies),
-              "unreadable": unreadable}
+              "unreadable": unreadable, "mislabelled": mislabelled,
+              "unexpected_scenarios": unexpected, "missing_scenarios": missing}
     ok = (bool(files)
           and not unreadable
+          and not mislabelled
+          and not unexpected
+          and not missing
           and set(topologies) == {topology}
           and len(files) == expected)
     return ok, report
@@ -181,7 +201,8 @@ def main() -> int:
         print("[FAIL] the sweep failed; nothing will be packaged.")
         return 2
 
-    ok, report = verify(p["result_dir"], p["expected_runs"], p["topology"])
+    ok, report = verify(p["result_dir"], p["expected_runs"], p["topology"],
+                        p["scenarios"])
     print(f"\nruns found : {report['found']}  (expected {report['expected']})")
     print(f"topologies : {report['topologies']}")
     for k in sorted(report["per_scenario"]):
@@ -189,6 +210,15 @@ def main() -> int:
     if report["unreadable"]:
         print(f"[FAIL] {len(report['unreadable'])} unreadable file(s): "
               f"{report['unreadable'][:3]}")
+    if report["missing_scenarios"]:
+        print(f"[FAIL] no runs at all for: {report['missing_scenarios']}")
+    if report["unexpected_scenarios"]:
+        print(f"[FAIL] runs for scenarios that were not requested: "
+              f"{report['unexpected_scenarios']} -- is this directory reused "
+              f"from an earlier session?")
+    if report["mislabelled"]:
+        print(f"[FAIL] {len(report['mislabelled'])} run(s) record a scenario "
+              f"that disagrees with their directory: {report['mislabelled'][:3]}")
     if not ok:
         print("[FAIL] output did not verify -- not packaging. "
               "Check the scenario counts above.")

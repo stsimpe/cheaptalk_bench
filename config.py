@@ -80,6 +80,12 @@ class ExperimentConfig:
     context_framing: ContextFraming = "none"
     # Resample an invalid action up to this many times (0 = old behavior).
     action_retries: int = 0
+    # Scenario label this run belongs to ("baseline", "framing_team_context",
+    # ...). Set by the runner so every record self-identifies: without it the
+    # only trace of the scenario is the output directory name, and a
+    # framing_*_context run is indistinguishable from a baseline one by config
+    # alone. Empty on the pre-2026-07 records, which are derived instead.
+    scenario: str = ""
     out_dir: str = "results"
 
     def to_dict(self) -> dict:

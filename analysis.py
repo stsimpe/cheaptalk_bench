@@ -71,6 +71,47 @@ def load_runs(results_dir: str) -> list[dict]:
     return runs
 
 
+# ---------- Scenario identification ----------
+
+def scenario_of(record: dict) -> str:
+    """The analysis-level scenario label for one run record.
+
+    Runs produced from 2026-07 onwards carry `config["scenario"]` (the runner's
+    label). The runner calls the no-comm + cheap-talk pair a single "baseline"
+    scenario, while the analysis wants the two arms as separate cells, so that
+    one label is split by condition here.
+
+    Older records have no stored label and are derived from the config. The
+    derivation MUST look at context_framing first: a framing_*_context run uses
+    message_policy="meaningful", exactly like baseline, so ignoring it silently
+    files those runs under baseline -- contaminating the very cell every
+    cheap-talk delta is measured against.
+    """
+    cfg = record["config"]
+    cond = cfg["condition"]
+
+    stored = cfg.get("scenario") or ""
+    if stored:
+        if stored == "baseline":
+            return "no_comm" if cond == "no_comm" else "baseline_cheap_talk"
+        return stored
+
+    # --- legacy records ---
+    ctx = cfg.get("context_framing", "none")
+    if ctx and ctx != "none":
+        return f"framing_{ctx}_context"
+    if cond == "no_comm":
+        return "no_comm"
+    policy = cfg.get("message_policy", "meaningful")
+    if policy == "meaningful":
+        return "baseline_cheap_talk"
+    if policy in ("no_sense", "irrelevant"):
+        return "no_sense"
+    if policy == "framing":
+        return f"framing_{cfg.get('framing_type', 'unknown')}"
+    return policy  # silence, counterfactual
+
+
 # ---------- Per-run summary ----------
 
 def _normalize_dict_keys_to_int(d: dict) -> dict:
@@ -206,6 +247,7 @@ def summarise_run(record: dict) -> dict:
         "condition": record["config"]["condition"],
         "game": game_name,
         "topology": topo_type,
+        "scenario": scenario_of(record),
         "model_id": record["config"]["model"]["model_id"],
         "experiment_group": record.get("_experiment_group", "baseline"),
         "message_policy": record["config"].get("message_policy", "N/A"),
