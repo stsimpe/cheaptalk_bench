@@ -40,6 +40,14 @@ SESSION_SCENARIOS: dict[str, list[str]] = {
     "B": ["framing_business", "framing_team", "framing_competitive"],
     "ALL": ["baseline", "no_sense", "silence", "counterfactual",
             "framing_business", "framing_team", "framing_competitive"],
+    # Session C is the framing-without-cheap-talk control. The framing_*
+    # scenarios of session B shape only the MESSAGES, so they exist solely
+    # under cheap_talk and cannot separate "the frame changed behaviour" from
+    # "the frame changed the messages, and the messages changed behaviour".
+    # These put the frame in the system prompt instead, so each one runs a
+    # no_comm arm as well -- twice the cells of session B, hence the cost.
+    "C": ["framing_business_context", "framing_team_context",
+          "framing_competitive_context"],
 }
 
 # max_new_tokens per model, per session, copied from the star campaign so a
@@ -53,15 +61,23 @@ MAX_NEW_TOKENS: dict[str, dict[str, int]] = {
     "google/gemma-2-9b-it":             {"A": 160, "B": 192},
 }
 
-# Scenarios whose baseline label also runs a no_comm arm (extra runs per cell).
-_HAS_NO_COMM_ARM = {"baseline"}
+def _conditions_per_scenario() -> dict[str, int]:
+    """How many condition arms each scenario runs, read from the runner itself.
+
+    Derived rather than hardcoded: baseline and the framing_*_context
+    scenarios run both a no_comm and a cheap_talk arm, everything else only
+    cheap_talk. A hardcoded copy silently under-counts the moment a scenario
+    gains an arm, and an under-count makes verification reject a perfectly
+    good session.
+    """
+    from run_all_scenarios import SCENARIOS
+    return {label: len(conditions) for label, conditions, *_ in SCENARIOS}
 
 
 def expected_runs(scenarios: list[str], n_runs: int) -> int:
-    """Every scenario is 2 games x n_runs; baseline adds its no_comm arm."""
-    total = len(scenarios) * 2 * n_runs
-    total += sum(2 * n_runs for s in scenarios if s in _HAS_NO_COMM_ARM)
-    return total
+    """Every scenario is (arms x 2 games x n_runs) run files."""
+    arms = _conditions_per_scenario()
+    return sum(arms[s] * 2 * n_runs for s in scenarios)
 
 
 def plan(model: str, session: str, topology: str, n_runs: int,
@@ -75,9 +91,12 @@ def plan(model: str, session: str, topology: str, n_runs: int,
                 f"explicitly, or add the model to MAX_NEW_TOKENS in campaign.py.\n"
                 f"Known models: {sorted(MAX_NEW_TOKENS)}"
             )
-        # "ALL" uses the session-A value; the two differ only for models whose
-        # star framing runs used a smaller cap.
-        max_new_tokens = MAX_NEW_TOKENS[model]["A" if session == "ALL" else session]
+        # "ALL" and "C" use the session-A value: A and C both send ordinary
+        # (message_policy="meaningful") messages, so they inherit the cap the
+        # star baseline used. Only the session-B framings differ, for the
+        # models whose star framing runs used a smaller cap.
+        key = "A" if session in ("ALL", "C") else session
+        max_new_tokens = MAX_NEW_TOKENS[model][key]
 
     scenarios = SESSION_SCENARIOS[session]
     short = model.split("/")[-1]
