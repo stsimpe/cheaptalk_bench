@@ -81,7 +81,8 @@ def expected_runs(scenarios: list[str], n_runs: int) -> int:
 
 
 def plan(model: str, session: str, topology: str, n_runs: int,
-         n_rounds: int, out_root: str, max_new_tokens: int | None = None) -> dict:
+         n_rounds: int, out_root: str, max_new_tokens: int | None = None,
+         only: list[str] | None = None) -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -99,6 +100,14 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         max_new_tokens = MAX_NEW_TOKENS[model][key]
 
     scenarios = SESSION_SCENARIOS[session]
+    if only:
+        unknown = [s for s in only if s not in scenarios]
+        if unknown:
+            raise SystemExit(
+                f"{unknown} are not part of session {session} ({scenarios}). "
+                f"Pick the session that owns them, or fix the spelling."
+            )
+        scenarios = [s for s in scenarios if s in only]  # keep the canonical order
     short = model.split("/")[-1]
     out_dir_base = os.path.join(out_root, short)
     # run_all_scenarios.py appends the topology suffix itself for non-star runs.
@@ -190,12 +199,17 @@ def main() -> int:
                     help="Override the per-model value from the campaign table.")
     ap.add_argument("--out-root", default="/kaggle/working/results")
     ap.add_argument("--zip-mirror", default="/kaggle/working")
+    ap.add_argument("--scenarios", nargs="+", default=None,
+                    help="Run only these scenarios from the session. Needed when a "
+                         "whole session does not fit in the runtime limit, and to "
+                         "resume after a session is killed part-way: pass the "
+                         "scenarios that have not been produced yet.")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
 
     p = plan(args.model, args.session, args.topology, args.n_runs,
-             args.n_rounds, args.out_root, args.max_new_tokens)
+             args.n_rounds, args.out_root, args.max_new_tokens, args.scenarios)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)

@@ -185,6 +185,7 @@ def main():
         print("#" * 70)
 
         scenario_started_runs = grand_total_runs
+        scenario_t0 = time.time()
         for game in ["pd", "sh"]:
             for condition in conditions:
                 cfg = ExperimentConfig(
@@ -237,13 +238,24 @@ def main():
                 os.path.join(zips_dir, sc_label),
                 args.zip_mirror,
             )
+        # Record wall time per scenario. Without it, planning how many
+        # scenarios fit inside a runtime limit is guesswork -- and a bad guess
+        # costs a whole session: the model matters far more than its parameter
+        # count suggests, so the only reliable input is what it measured last
+        # time.
+        scenario_seconds = time.time() - scenario_t0
         progress["scenarios_done"].append({
             "name": sc_label, "runs": runs_in_scenario,
             "tokens_so_far": getattr(client, "session_tokens", 0),
+            "seconds": round(scenario_seconds, 1),
+            "seconds_per_run": round(scenario_seconds / runs_in_scenario, 1)
+            if runs_in_scenario else None,
         })
         progress["current_scenario"] = None
         write_progress(progress_path, progress)
-        print(f"  [scenario done] {sc_label}: {runs_in_scenario} runs saved + zipped")
+        print(f"  [scenario done] {sc_label}: {runs_in_scenario} runs saved + zipped "
+              f"in {scenario_seconds/60:.1f} min "
+              f"({scenario_seconds/max(runs_in_scenario,1):.0f} s/run)")
 
     # All scenarios done -- combined zip
     final_zip = os.path.join(args.out_dir_base, "all_results")
