@@ -161,19 +161,25 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
         cfg = data.get("config", {})
         model_cfg = cfg.get("model", {})
         model_id_raw = model_cfg.get("model_id", "unknown")
-        scenario = derive_scenario(cfg)
         try:
             summary = summarise_run(data)
         except Exception as e:
             n_skipped += 1
             continue
+        # Scenario and topology come from analysis.summarise_run, which calls
+        # analysis.scenario_of. The local derive_scenario() below is kept only
+        # for reference: it inspects message_policy and IGNORES context_framing,
+        # so every framing_*_context run would be filed under no_comm /
+        # baseline_cheap_talk -- contaminating the cells every delta is measured
+        # against. Never reintroduce it.
         rows.append({
             "path": path,
             "model_id": normalise_model_id(model_id_raw),
             "model_id_raw": model_id_raw,
             "game": summary["game"],
+            "topology": summary["topology"],
             "condition": summary["condition"],
-            "scenario": scenario,
+            "scenario": summary["scenario"],
             "framing_type": cfg.get("framing_type", ""),
             "n_rounds": summary["n_rounds"],
             "n_runs_config": cfg.get("n_runs", -1),
@@ -186,10 +192,11 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
 
 def aggregate(master: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    grouped = master.groupby(["model_id", "scenario", "game"])
-    for (model, scenario, game), sub in grouped:
+    grouped = master.groupby(["model_id", "topology", "scenario", "game"])
+    for (model, topology, scenario, game), sub in grouped:
         row = {
             "model_id": model,
+            "topology": topology,
             "scenario": scenario,
             "game": game,
             "n_runs": len(sub),
@@ -209,7 +216,7 @@ def aggregate(master: pd.DataFrame) -> pd.DataFrame:
 def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
     """Cheap-talk Δ vs no_comm baseline, per (model, game, scenario)."""
     rows = []
-    for (model, game), sub in master.groupby(["model_id", "game"]):
+    for (model, topology, game), sub in master.groupby(["model_id", "topology", "game"]):
         no_comm = sub[sub["scenario"] == "no_comm"]["coop_rate_overall"].dropna().values
         if len(no_comm) == 0:
             continue
@@ -223,6 +230,7 @@ def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
             ct_mean, ct_lo, ct_hi = bootstrap_ci(ct_vals)
             rows.append({
                 "model_id": model,
+                "topology": topology,
                 "game": game,
                 "scenario": scenario,
                 "no_comm_mean": nc_mean,
@@ -306,16 +314,16 @@ def write_markdown_report(
 
     # Per-(model, scenario) summary with CIs
     lines.append("## Detailed coop_rate with 95% bootstrap CI\n\n")
-    lines.append("| model | scenario | game | n | coop% (95% CI) |\n")
-    lines.append("|---|---|---|---|---|\n")
-    for _, r in aggregated.sort_values(["model_id", "game", "scenario"]).iterrows():
+    lines.append("| model | topology | scenario | game | n | coop% (95% CI) |\n")
+    lines.append("|---|---|---|---|---|---|\n")
+    for _, r in aggregated.sort_values(["model_id", "topology", "game", "scenario"]).iterrows():
         m = r.get("coop_rate_overall_mean", np.nan)
         lo = r.get("coop_rate_overall_ci_lo", np.nan)
         hi = r.get("coop_rate_overall_ci_hi", np.nan)
         if np.isnan(m):
             continue
         lines.append(
-            f"| {r['model_id']} | {r['scenario']} | {r['game']} | {int(r['n_runs'])} | "
+            f"| {r['model_id']} | {r['topology']} | {r['scenario']} | {r['game']} | {int(r['n_runs'])} | "
             f"{m:.1%} [{lo:.1%}, {hi:.1%}] |\n"
         )
 
@@ -342,7 +350,7 @@ def main():
     print(f"Scenarios: {sorted(master['scenario'].unique().tolist())}")
     print(f"Games: {sorted(master['game'].unique().tolist())}")
     print(f"\nRuns per (model, scenario, game):")
-    counts = master.groupby(["model_id", "scenario", "game"]).size().unstack(level=-1, fill_value=0)
+    counts = master.groupby(["model_id", "topology", "scenario", "game"]).size().unstack(level=-1, fill_value=0)
     print(counts.to_string())
 
     master_path = os.path.join(args.out_dir, "cross_model_master.csv")
