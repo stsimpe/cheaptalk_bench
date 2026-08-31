@@ -180,6 +180,7 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
             "topology": summary["topology"],
             "condition": summary["condition"],
             "scenario": summary["scenario"],
+            "cell": cell_label(summary["scenario"], summary["condition"]),
             "framing_type": cfg.get("framing_type", ""),
             "n_rounds": summary["n_rounds"],
             "n_runs_config": cfg.get("n_runs", -1),
@@ -190,14 +191,32 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def cell_label(scenario: str, condition: str) -> str:
+    """Unique label for one experimental cell.
+
+    The three `framing_*_context` scenarios were run under BOTH conditions:
+    the frame in the system prompt with the channel closed (`no_comm`), and
+    the same frame with messages on (`cheap_talk`). Those are two different
+    experiments -- the whole two-channel result is the contrast between them
+    -- so they must never be averaged into one cell. Grouping on `scenario`
+    alone silently did exactly that. Every other scenario has exactly one
+    condition, so its label is just the scenario name.
+    """
+    if scenario.endswith("_context"):
+        return f"{scenario}[{condition}]"
+    return scenario
+
+
 def aggregate(master: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    grouped = master.groupby(["model_id", "topology", "scenario", "game"])
-    for (model, topology, scenario, game), sub in grouped:
+    grouped = master.groupby(["model_id", "topology", "cell", "game"])
+    for (model, topology, cell, game), sub in grouped:
         row = {
             "model_id": model,
             "topology": topology,
-            "scenario": scenario,
+            "cell": cell,
+            "scenario": sub["scenario"].iloc[0],
+            "condition": sub["condition"].iloc[0],
             "game": game,
             "n_runs": len(sub),
         }
@@ -221,8 +240,8 @@ def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
         if len(no_comm) == 0:
             continue
         nc_mean, nc_lo, nc_hi = bootstrap_ci(no_comm)
-        for scenario, sc_sub in sub.groupby("scenario"):
-            if scenario == "no_comm":
+        for cell, sc_sub in sub.groupby("cell"):
+            if cell == "no_comm":
                 continue
             ct_vals = sc_sub["coop_rate_overall"].dropna().values
             if len(ct_vals) == 0:
@@ -232,7 +251,9 @@ def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
                 "model_id": model,
                 "topology": topology,
                 "game": game,
-                "scenario": scenario,
+                "cell": cell,
+                "scenario": sc_sub["scenario"].iloc[0],
+                "condition": sc_sub["condition"].iloc[0],
                 "no_comm_mean": nc_mean,
                 "no_comm_ci_lo": nc_lo,
                 "no_comm_ci_hi": nc_hi,
@@ -264,7 +285,7 @@ def write_markdown_report(
     lines.append("## Mean cooperation rate by (scenario × model × game)\n\n")
     try:
         pivot = aggregated.pivot_table(
-            index="scenario",
+            index="cell",
             columns=["model_id", "game"],
             values="coop_rate_overall_mean",
             aggfunc="first",
@@ -277,7 +298,7 @@ def write_markdown_report(
     lines.append("## Cheap-talk Δ in cooperation (cheap_talk_x − no_comm)\n\n")
     try:
         delta_pivot = deltas.pivot_table(
-            index="scenario",
+            index="cell",
             columns=["model_id", "game"],
             values="delta",
             aggfunc="first",
@@ -290,7 +311,7 @@ def write_markdown_report(
     lines.append("## Hub minus leaf cooperation (within-star asymmetry)\n\n")
     try:
         hl_pivot = aggregated.pivot_table(
-            index="scenario",
+            index="cell",
             columns=["model_id", "game"],
             values="hub_minus_leaf_coop_mean",
             aggfunc="first",
@@ -303,7 +324,7 @@ def write_markdown_report(
     lines.append("## Hub exploitation rate (PD cheap-talk only)\n\n")
     try:
         he_pivot = aggregated.pivot_table(
-            index="scenario",
+            index="cell",
             columns=["model_id", "game"],
             values="hub_exploitation_rate_mean",
             aggfunc="first",
@@ -350,7 +371,7 @@ def main():
     print(f"Scenarios: {sorted(master['scenario'].unique().tolist())}")
     print(f"Games: {sorted(master['game'].unique().tolist())}")
     print(f"\nRuns per (model, scenario, game):")
-    counts = master.groupby(["model_id", "topology", "scenario", "game"]).size().unstack(level=-1, fill_value=0)
+    counts = master.groupby(["model_id", "topology", "cell", "game"]).size().unstack(level=-1, fill_value=0)
     print(counts.to_string())
 
     master_path = os.path.join(args.out_dir, "cross_model_master.csv")
@@ -375,8 +396,9 @@ def main():
     print("\n=== HEADLINE: cheap-talk Δ per (model, game) ===")
     if not deltas.empty:
         baseline_ct = deltas[deltas["scenario"] == "baseline_cheap_talk"]
-        for _, r in baseline_ct.sort_values(["model_id", "game"]).iterrows():
-            print(f"  {r['model_id']:32s} {r['game']:3s}: "
+        for _, r in baseline_ct.sort_values(
+                ["model_id", "topology", "game"]).iterrows():
+            print(f"  {r['model_id']:24s} {r['topology']:6s} {r['game']:3s}: "
                   f"no_comm={r['no_comm_mean']:.1%}  → cheap_talk={r['cheap_talk_mean']:.1%}  "
                   f"(Δ = {r['delta']:+.1%})")
 
