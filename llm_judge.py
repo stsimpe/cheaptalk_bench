@@ -46,8 +46,14 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import ModelConfig
 from llm_client import make_client
-from cross_model_analysis import discover_records, derive_scenario, normalise_model_id
+from cross_model_analysis import discover_records, normalise_model_id
+from analysis import scenario_of
 from games import GAMES
+
+# NOTE: this script does NOT split results by topology -- star and cycle runs
+# of the same (model, scenario) are pooled. That was harmless when only the star
+# campaign existed; it is wrong for the current corpus. Split by
+# summarise_run()["topology"] before trusting any aggregate produced here.
 
 
 # ---------------- Judge prompt ----------------
@@ -125,7 +131,7 @@ def collect_hub_messages(roots: list[str]) -> pd.DataFrame:
         if cfg.get("condition") != "cheap_talk":
             continue
         model_id = normalise_model_id(cfg.get("model", {}).get("model_id", "unknown"))
-        scenario = derive_scenario(cfg)
+        scenario = scenario_of(data)
         game_name = cfg.get("game")
         if game_name not in GAMES:
             continue
