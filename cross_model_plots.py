@@ -197,16 +197,18 @@ def plot_delta_bars(delta_df: pd.DataFrame, out_dir: str):
 def collect_trajectories(roots: list[str]):
     """Walk roots; per (model, scenario, game, round), collect coop rates."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    # scenario_of (not the local derive_scenario) -- see cross_model_analysis.
     from cross_model_analysis import (
-        discover_records, derive_scenario, normalise_model_id,
+        discover_records, normalise_model_id,
     )
+    from analysis import scenario_of
     from games import GAMES
 
     rows = []
     for path, data in discover_records(roots):
         cfg = data.get("config", {})
         model_id = normalise_model_id(cfg.get("model", {}).get("model_id", "unknown"))
-        scenario = derive_scenario(cfg)
+        scenario = scenario_of(data)
         game_name = cfg.get("game")
         if game_name not in GAMES:
             continue

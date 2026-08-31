@@ -30,9 +30,15 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cross_model_analysis import (
-    discover_records, derive_scenario, normalise_model_id,
+    discover_records, normalise_model_id,
 )
+from analysis import scenario_of
 from games import GAMES
+
+# NOTE: this script does NOT split results by topology -- star and cycle runs
+# of the same (model, scenario) are pooled. That was harmless when only the star
+# campaign existed; it is wrong for the current corpus. Split by
+# summarise_run()["topology"] before trusting any aggregate produced here.
 
 
 # Words to ignore when computing top vocabulary.
@@ -78,7 +84,7 @@ def collect_messages(roots: list[str]):
     for path, data in discover_records(roots):
         cfg = data.get("config", {})
         model_id = normalise_model_id(cfg.get("model", {}).get("model_id", "unknown"))
-        scenario = derive_scenario(cfg)
+        scenario = scenario_of(data)
         game_name = cfg.get("game")
         if game_name not in GAMES:
             continue
