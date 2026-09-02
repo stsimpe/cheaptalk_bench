@@ -27,3 +27,7 @@ parse_errors.log
 .vscode/
 .idea/
 *.code-workspace
+
+# Regenerable in ~1 min from the raw runs; 18-19 MB each.
+cross_model_output_final/message_corpus.csv
+cross_model_output_final/filter_annotated.csv
