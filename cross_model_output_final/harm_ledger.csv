@@ -1,0 +1,201 @@
+model_id,topology,game,cell,kind,anchor,value,delta,n
+Llama-3.1-8B-Instruct,cycle,pd,baseline_cheap_talk,meaningful,0.5681483361247863,0.990625,0.42247666387521365,5
+Llama-3.1-8B-Instruct,cycle,pd,framing_business,meaningful,0.5681483361247863,0.78125,0.21310166387521368,5
+Llama-3.1-8B-Instruct,cycle,pd,framing_team,meaningful,0.5681483361247863,0.6799603174603175,0.11181198133553116,5
+Llama-3.1-8B-Instruct,cycle,pd,framing_business_context[cheap_talk],meaningful,0.5681483361247863,0.978125,0.4099766638752137,5
+Llama-3.1-8B-Instruct,cycle,pd,framing_team_context[cheap_talk],meaningful,0.5681483361247863,0.99375,0.4256016638752137,5
+Llama-3.1-8B-Instruct,cycle,pd,no_sense,degraded,0.5681483361247863,0.6265120967741936,0.05836376064940729,5
+Llama-3.1-8B-Instruct,cycle,pd,silence,degraded,0.5681483361247863,0.7356214482972812,0.16747311217249483,5
+Llama-3.1-8B-Instruct,cycle,pd,counterfactual,degraded,0.5681483361247863,0.99375,0.4256016638752137,5
+Llama-3.1-8B-Instruct,cycle,pd,framing_competitive,adversarial (messages),0.5681483361247863,0.31879960317460315,-0.24934873295018317,5
+Llama-3.1-8B-Instruct,cycle,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.5681483361247863,0.9811011904761905,0.41295285435140416,5
+Llama-3.1-8B-Instruct,cycle,sh,baseline_cheap_talk,meaningful,0.7025386291848177,0.915625,0.21308637081518234,5
+Llama-3.1-8B-Instruct,cycle,sh,framing_business,meaningful,0.7025386291848177,0.7863095238095238,0.0837708946247061,5
+Llama-3.1-8B-Instruct,cycle,sh,framing_team,meaningful,0.7025386291848177,0.690625,-0.011913629184817642,5
+Llama-3.1-8B-Instruct,cycle,sh,framing_business_context[cheap_talk],meaningful,0.7025386291848177,0.928125,0.2255863708151823,5
+Llama-3.1-8B-Instruct,cycle,sh,framing_team_context[cheap_talk],meaningful,0.7025386291848177,0.86875,0.16621137081518234,5
+Llama-3.1-8B-Instruct,cycle,sh,no_sense,degraded,0.7025386291848177,0.740625,0.03808637081518229,5
+Llama-3.1-8B-Instruct,cycle,sh,silence,degraded,0.7025386291848177,0.6492332099418296,-0.05330541924298804,5
+Llama-3.1-8B-Instruct,cycle,sh,counterfactual,degraded,0.7025386291848177,0.9625,0.25996137081518234,5
+Llama-3.1-8B-Instruct,cycle,sh,framing_competitive,adversarial (messages),0.7025386291848177,0.5562996031746031,-0.14623902601021455,5
+Llama-3.1-8B-Instruct,cycle,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.7025386291848177,0.971875,0.26933637081518236,5
+Llama-3.1-8B-Instruct,star,pd,baseline_cheap_talk,meaningful,0.46965541554976087,0.984375,0.5147195844502391,5
+Llama-3.1-8B-Instruct,star,pd,framing_business,meaningful,0.46965541554976087,0.69375,0.2240945844502391,5
+Llama-3.1-8B-Instruct,star,pd,framing_team,meaningful,0.46965541554976087,0.675,0.20534458445023918,5
+Llama-3.1-8B-Instruct,star,pd,framing_business_context[cheap_talk],meaningful,0.46965541554976087,0.9875,0.5178445844502392,5
+Llama-3.1-8B-Instruct,star,pd,framing_team_context[cheap_talk],meaningful,0.46965541554976087,1.0,0.5303445844502391,5
+Llama-3.1-8B-Instruct,star,pd,no_sense,degraded,0.46965541554976087,0.484375,0.014719584450239132,5
+Llama-3.1-8B-Instruct,star,pd,silence,degraded,0.46965541554976087,0.32906746031746026,-0.1405879552323006,5
+Llama-3.1-8B-Instruct,star,pd,counterfactual,degraded,0.46965541554976087,0.9528769841269842,0.4832215685772233,5
+Llama-3.1-8B-Instruct,star,pd,framing_competitive,adversarial (messages),0.46965541554976087,0.36054025423728814,-0.10911516131247273,5
+Llama-3.1-8B-Instruct,star,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.46965541554976087,0.946875,0.47721958445023915,5
+Llama-3.1-8B-Instruct,star,sh,baseline_cheap_talk,meaningful,0.6521467097194513,0.953125,0.3009782902805487,5
+Llama-3.1-8B-Instruct,star,sh,framing_business,meaningful,0.6521467097194513,0.61875,-0.0333967097194513,5
+Llama-3.1-8B-Instruct,star,sh,framing_team,meaningful,0.6521467097194513,0.634375,-0.0177717097194513,5
+Llama-3.1-8B-Instruct,star,sh,framing_business_context[cheap_talk],meaningful,0.6521467097194513,0.9498015873015874,0.29765487758213605,5
+Llama-3.1-8B-Instruct,star,sh,framing_team_context[cheap_talk],meaningful,0.6521467097194513,0.8928278688524591,0.2406811591330078,5
+Llama-3.1-8B-Instruct,star,sh,no_sense,degraded,0.6521467097194513,0.7020337301587302,0.04988702043927884,5
+Llama-3.1-8B-Instruct,star,sh,silence,degraded,0.6521467097194513,0.8431451612903226,0.19099845157087125,5
+Llama-3.1-8B-Instruct,star,sh,counterfactual,degraded,0.6521467097194513,0.9654761904761905,0.31332948075673916,5
+Llama-3.1-8B-Instruct,star,sh,framing_competitive,adversarial (messages),0.6521467097194513,0.5251984126984126,-0.12694829702103871,5
+Llama-3.1-8B-Instruct,star,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.6521467097194513,0.93125,0.2791032902805487,5
+Qwen2.5-7B-Instruct,cycle,pd,baseline_cheap_talk,meaningful,0.109375,0.9625,0.853125,5
+Qwen2.5-7B-Instruct,cycle,pd,framing_business,meaningful,0.109375,0.975,0.865625,5
+Qwen2.5-7B-Instruct,cycle,pd,framing_team,meaningful,0.109375,0.996875,0.8875,5
+Qwen2.5-7B-Instruct,cycle,pd,framing_business_context[cheap_talk],meaningful,0.109375,1.0,0.890625,5
+Qwen2.5-7B-Instruct,cycle,pd,framing_team_context[cheap_talk],meaningful,0.109375,0.996875,0.8875,5
+Qwen2.5-7B-Instruct,cycle,pd,no_sense,degraded,0.109375,0.16875,0.05937500000000001,5
+Qwen2.5-7B-Instruct,cycle,pd,silence,degraded,0.109375,0.39375,0.284375,5
+Qwen2.5-7B-Instruct,cycle,pd,counterfactual,degraded,0.109375,0.971875,0.8625,5
+Qwen2.5-7B-Instruct,cycle,pd,framing_competitive,adversarial (messages),0.109375,0.11875,0.009374999999999994,5
+Qwen2.5-7B-Instruct,cycle,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.109375,0.94375,0.834375,5
+Qwen2.5-7B-Instruct,cycle,sh,baseline_cheap_talk,meaningful,0.909375,1.0,0.09062499999999996,5
+Qwen2.5-7B-Instruct,cycle,sh,framing_business,meaningful,0.909375,1.0,0.09062499999999996,5
+Qwen2.5-7B-Instruct,cycle,sh,framing_team,meaningful,0.909375,1.0,0.09062499999999996,5
+Qwen2.5-7B-Instruct,cycle,sh,framing_business_context[cheap_talk],meaningful,0.909375,1.0,0.09062499999999996,5
+Qwen2.5-7B-Instruct,cycle,sh,framing_team_context[cheap_talk],meaningful,0.909375,1.0,0.09062499999999996,5
+Qwen2.5-7B-Instruct,cycle,sh,no_sense,degraded,0.909375,0.93125,0.021874999999999978,5
+Qwen2.5-7B-Instruct,cycle,sh,silence,degraded,0.909375,0.9875,0.078125,5
+Qwen2.5-7B-Instruct,cycle,sh,counterfactual,degraded,0.909375,1.0,0.09062499999999996,5
+Qwen2.5-7B-Instruct,cycle,sh,framing_competitive,adversarial (messages),0.909375,0.971875,0.0625,5
+Qwen2.5-7B-Instruct,cycle,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.909375,1.0,0.09062499999999996,5
+Qwen2.5-7B-Instruct,star,pd,baseline_cheap_talk,meaningful,0.084375,1.0,0.915625,5
+Qwen2.5-7B-Instruct,star,pd,framing_business,meaningful,0.084375,0.98125,0.896875,5
+Qwen2.5-7B-Instruct,star,pd,framing_team,meaningful,0.084375,0.975,0.890625,5
+Qwen2.5-7B-Instruct,star,pd,framing_business_context[cheap_talk],meaningful,0.084375,1.0,0.915625,5
+Qwen2.5-7B-Instruct,star,pd,framing_team_context[cheap_talk],meaningful,0.084375,1.0,0.915625,5
+Qwen2.5-7B-Instruct,star,pd,no_sense,degraded,0.084375,0.115625,0.03125,5
+Qwen2.5-7B-Instruct,star,pd,silence,degraded,0.084375,0.428125,0.34375,5
+Qwen2.5-7B-Instruct,star,pd,counterfactual,degraded,0.084375,0.765625,0.68125,5
+Qwen2.5-7B-Instruct,star,pd,framing_competitive,adversarial (messages),0.084375,0.328125,0.24375,5
+Qwen2.5-7B-Instruct,star,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.084375,0.8875,0.803125,5
+Qwen2.5-7B-Instruct,star,sh,baseline_cheap_talk,meaningful,0.93125,1.0,0.06874999999999998,5
+Qwen2.5-7B-Instruct,star,sh,framing_business,meaningful,0.93125,1.0,0.06874999999999998,5
+Qwen2.5-7B-Instruct,star,sh,framing_team,meaningful,0.93125,1.0,0.06874999999999998,5
+Qwen2.5-7B-Instruct,star,sh,framing_business_context[cheap_talk],meaningful,0.93125,1.0,0.06874999999999998,5
+Qwen2.5-7B-Instruct,star,sh,framing_team_context[cheap_talk],meaningful,0.93125,1.0,0.06874999999999998,5
+Qwen2.5-7B-Instruct,star,sh,no_sense,degraded,0.93125,0.984375,0.05312499999999998,5
+Qwen2.5-7B-Instruct,star,sh,silence,degraded,0.93125,0.996875,0.06562499999999993,5
+Qwen2.5-7B-Instruct,star,sh,counterfactual,degraded,0.93125,0.99375,0.0625,5
+Qwen2.5-7B-Instruct,star,sh,framing_competitive,adversarial (messages),0.93125,0.990625,0.059374999999999956,5
+Qwen2.5-7B-Instruct,star,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.93125,1.0,0.06874999999999998,5
+Qwen3-4B,cycle,pd,baseline_cheap_talk,meaningful,0.04708782848591072,1.0,0.9529121715140892,5
+Qwen3-4B,cycle,pd,framing_business,meaningful,0.04708782848591072,1.0,0.9529121715140892,5
+Qwen3-4B,cycle,pd,framing_team,meaningful,0.04708782848591072,1.0,0.9529121715140892,5
+Qwen3-4B,cycle,pd,framing_business_context[cheap_talk],meaningful,0.04708782848591072,1.0,0.9529121715140892,5
+Qwen3-4B,cycle,pd,framing_team_context[cheap_talk],meaningful,0.04708782848591072,1.0,0.9529121715140892,5
+Qwen3-4B,cycle,pd,no_sense,degraded,0.04708782848591072,0.95,0.9029121715140892,5
+Qwen3-4B,cycle,pd,silence,degraded,0.04708782848591072,0.8730158730158731,0.8259280445299624,5
+Qwen3-4B,cycle,pd,counterfactual,degraded,0.04708782848591072,1.0,0.9529121715140892,5
+Qwen3-4B,cycle,pd,framing_competitive,adversarial (messages),0.04708782848591072,0.01875,-0.02833782848591072,5
+Qwen3-4B,cycle,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.04708782848591072,1.0,0.9529121715140892,5
+Qwen3-4B,cycle,sh,baseline_cheap_talk,meaningful,0.9548668032786886,1.0,0.04513319672131144,5
+Qwen3-4B,cycle,sh,framing_business,meaningful,0.9548668032786886,1.0,0.04513319672131144,5
+Qwen3-4B,cycle,sh,framing_team,meaningful,0.9548668032786886,1.0,0.04513319672131144,5
+Qwen3-4B,cycle,sh,framing_business_context[cheap_talk],meaningful,0.9548668032786886,1.0,0.04513319672131144,5
+Qwen3-4B,cycle,sh,framing_team_context[cheap_talk],meaningful,0.9548668032786886,1.0,0.04513319672131144,5
+Qwen3-4B,cycle,sh,no_sense,degraded,0.9548668032786886,0.990625,0.03575819672131142,5
+Qwen3-4B,cycle,sh,silence,degraded,0.9548668032786886,0.990625,0.03575819672131142,5
+Qwen3-4B,cycle,sh,counterfactual,degraded,0.9548668032786886,1.0,0.04513319672131144,5
+Qwen3-4B,cycle,sh,framing_competitive,adversarial (messages),0.9548668032786886,1.0,0.04513319672131144,5
+Qwen3-4B,cycle,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.9548668032786886,1.0,0.04513319672131144,5
+Qwen3-4B,star,pd,baseline_cheap_talk,meaningful,0.03680385613644788,1.0,0.9631961438635521,5
+Qwen3-4B,star,pd,framing_business,meaningful,0.03680385613644788,1.0,0.9631961438635521,5
+Qwen3-4B,star,pd,framing_team,meaningful,0.03680385613644788,1.0,0.9631961438635521,5
+Qwen3-4B,star,pd,framing_business_context[cheap_talk],meaningful,0.03680385613644788,1.0,0.9631961438635521,5
+Qwen3-4B,star,pd,framing_team_context[cheap_talk],meaningful,0.03680385613644788,1.0,0.9631961438635521,5
+Qwen3-4B,star,pd,no_sense,degraded,0.03680385613644788,0.921875,0.8850711438635521,5
+Qwen3-4B,star,pd,silence,degraded,0.03680385613644788,0.7,0.6631961438635521,5
+Qwen3-4B,star,pd,counterfactual,degraded,0.03680385613644788,0.996875,0.9600711438635521,5
+Qwen3-4B,star,pd,framing_competitive,adversarial (messages),0.03680385613644788,0.00625,-0.030553856136447878,5
+Qwen3-4B,star,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.03680385613644788,1.0,0.9631961438635521,5
+Qwen3-4B,star,sh,baseline_cheap_talk,meaningful,0.9552590420332356,1.0,0.04474095796676436,5
+Qwen3-4B,star,sh,framing_business,meaningful,0.9552590420332356,1.0,0.04474095796676436,5
+Qwen3-4B,star,sh,framing_team,meaningful,0.9552590420332356,1.0,0.04474095796676436,5
+Qwen3-4B,star,sh,framing_business_context[cheap_talk],meaningful,0.9552590420332356,1.0,0.04474095796676436,5
+Qwen3-4B,star,sh,framing_team_context[cheap_talk],meaningful,0.9552590420332356,1.0,0.04474095796676436,5
+Qwen3-4B,star,sh,no_sense,degraded,0.9552590420332356,1.0,0.04474095796676436,5
+Qwen3-4B,star,sh,silence,degraded,0.9552590420332356,0.9875,0.032240957966764405,5
+Qwen3-4B,star,sh,counterfactual,degraded,0.9552590420332356,1.0,0.04474095796676436,5
+Qwen3-4B,star,sh,framing_competitive,adversarial (messages),0.9552590420332356,0.984375,0.02911595796676436,5
+Qwen3-4B,star,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.9552590420332356,1.0,0.04474095796676436,5
+gemma-2-2b-it,cycle,pd,baseline_cheap_talk,meaningful,0.178125,0.9768719789956117,0.7987469789956118,5
+gemma-2-2b-it,cycle,pd,framing_business,meaningful,0.178125,0.6433908558655552,0.46526585586555524,5
+gemma-2-2b-it,cycle,pd,framing_team,meaningful,0.178125,0.9734126984126984,0.7952876984126984,5
+gemma-2-2b-it,cycle,pd,framing_business_context[cheap_talk],meaningful,0.178125,0.9898247597512719,0.811699759751272,5
+gemma-2-2b-it,cycle,pd,framing_team_context[cheap_talk],meaningful,0.178125,0.9903158602150539,0.8121908602150539,5
+gemma-2-2b-it,cycle,pd,no_sense,degraded,0.178125,0.14230256691965898,-0.035822433080341026,5
+gemma-2-2b-it,cycle,pd,silence,degraded,0.178125,0.07543284926263646,-0.10269215073736354,5
+gemma-2-2b-it,cycle,pd,counterfactual,degraded,0.178125,0.04756944444444441,-0.1305555555555556,5
+gemma-2-2b-it,cycle,pd,framing_competitive,adversarial (messages),0.178125,0.033956750438340136,-0.14416824956165986,5
+gemma-2-2b-it,cycle,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.178125,0.7943894638765078,0.6162644638765078,5
+gemma-2-2b-it,cycle,sh,baseline_cheap_talk,meaningful,0.5830357142857142,0.3379789062917039,-0.2450568079940103,5
+gemma-2-2b-it,cycle,sh,framing_business,meaningful,0.5830357142857142,0.5646942797009387,-0.01834143458477555,5
+gemma-2-2b-it,cycle,sh,framing_team,meaningful,0.5830357142857142,0.27889346657596453,-0.3041422477097497,5
+gemma-2-2b-it,cycle,sh,framing_business_context[cheap_talk],meaningful,0.5830357142857142,0.5809687278724376,-0.002066986413276628,5
+gemma-2-2b-it,cycle,sh,framing_team_context[cheap_talk],meaningful,0.5830357142857142,0.4636504781529308,-0.1193852361327834,5
+gemma-2-2b-it,cycle,sh,no_sense,degraded,0.5830357142857142,0.46115027829313543,-0.12188543599257878,5
+gemma-2-2b-it,cycle,sh,silence,degraded,0.5830357142857142,0.6326666666666666,0.04963095238095239,5
+gemma-2-2b-it,cycle,sh,counterfactual,degraded,0.5830357142857142,0.37836955335633277,-0.20466616092938145,5
+gemma-2-2b-it,cycle,sh,framing_competitive,adversarial (messages),0.5830357142857142,0.1560539774211165,-0.4269817368645977,5
+gemma-2-2b-it,cycle,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.5830357142857142,0.2501735193019566,-0.33286219498375763,5
+gemma-2-2b-it,star,pd,baseline_cheap_talk,meaningful,0.6746527777777778,0.9796610169491526,0.3050082391713749,5
+gemma-2-2b-it,star,pd,framing_business,meaningful,0.6746527777777778,0.6382991059024332,-0.03635367187534455,5
+gemma-2-2b-it,star,pd,framing_team,meaningful,0.6746527777777778,0.9858129315756434,0.31116015379786566,5
+gemma-2-2b-it,star,pd,framing_business_context[cheap_talk],meaningful,0.6746527777777778,0.9539890710382514,0.2793362932604736,5
+gemma-2-2b-it,star,pd,framing_team_context[cheap_talk],meaningful,0.6746527777777778,0.9864878113157747,0.3118350335379969,5
+gemma-2-2b-it,star,pd,no_sense,degraded,0.6746527777777778,0.2614078409513192,-0.4132449368264586,5
+gemma-2-2b-it,star,pd,silence,degraded,0.6746527777777778,0.03872641498257258,-0.6359263627952052,5
+gemma-2-2b-it,star,pd,counterfactual,degraded,0.6746527777777778,0.06454599018497399,-0.6101067875928038,5
+gemma-2-2b-it,star,pd,framing_competitive,adversarial (messages),0.6746527777777778,0.07561403508771927,-0.5990387426900585,5
+gemma-2-2b-it,star,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.6746527777777778,0.815832246849196,0.1411794690714182,5
+gemma-2-2b-it,star,sh,baseline_cheap_talk,meaningful,0.6475409836065574,0.2258958317391559,-0.42164515186740154,5
+gemma-2-2b-it,star,sh,framing_business,meaningful,0.6475409836065574,0.5860919540229885,-0.061449029583568904,5
+gemma-2-2b-it,star,sh,framing_team,meaningful,0.6475409836065574,0.1875589397221868,-0.45998204388437064,5
+gemma-2-2b-it,star,sh,framing_business_context[cheap_talk],meaningful,0.6475409836065574,0.7092351289792892,0.06169414537273177,5
+gemma-2-2b-it,star,sh,framing_team_context[cheap_talk],meaningful,0.6475409836065574,0.7303131407947324,0.08277215718817499,5
+gemma-2-2b-it,star,sh,no_sense,degraded,0.6475409836065574,0.3677265070279319,-0.2798144765786255,5
+gemma-2-2b-it,star,sh,silence,degraded,0.6475409836065574,0.5898416335916336,-0.05769935001492388,5
+gemma-2-2b-it,star,sh,counterfactual,degraded,0.6475409836065574,0.44378235292360185,-0.20375863068295558,5
+gemma-2-2b-it,star,sh,framing_competitive,adversarial (messages),0.6475409836065574,0.22683120790257827,-0.42070977570397916,5
+gemma-2-2b-it,star,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.6475409836065574,0.4047273613749896,-0.24281362223156783,5
+gemma-2-9b-it,cycle,pd,baseline_cheap_talk,meaningful,0.278422619047619,1.0,0.721577380952381,5
+gemma-2-9b-it,cycle,pd,framing_business,meaningful,0.278422619047619,1.0,0.721577380952381,5
+gemma-2-9b-it,cycle,pd,framing_team,meaningful,0.278422619047619,1.0,0.721577380952381,5
+gemma-2-9b-it,cycle,pd,framing_business_context[cheap_talk],meaningful,0.278422619047619,1.0,0.721577380952381,5
+gemma-2-9b-it,cycle,pd,framing_team_context[cheap_talk],meaningful,0.278422619047619,1.0,0.721577380952381,5
+gemma-2-9b-it,cycle,pd,no_sense,degraded,0.278422619047619,0.228125,-0.05029761904761901,5
+gemma-2-9b-it,cycle,pd,silence,degraded,0.278422619047619,0.559375,0.28095238095238095,5
+gemma-2-9b-it,cycle,pd,counterfactual,degraded,0.278422619047619,0.984375,0.705952380952381,5
+gemma-2-9b-it,cycle,pd,framing_competitive,adversarial (messages),0.278422619047619,0.00625,-0.272172619047619,5
+gemma-2-9b-it,cycle,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.278422619047619,1.0,0.721577380952381,5
+gemma-2-9b-it,cycle,sh,baseline_cheap_talk,meaningful,0.996875,0.94375,-0.05312499999999998,5
+gemma-2-9b-it,cycle,sh,framing_business,meaningful,0.996875,0.99375,-0.0031249999999999334,5
+gemma-2-9b-it,cycle,sh,framing_team,meaningful,0.996875,1.0,0.0031250000000000444,5
+gemma-2-9b-it,cycle,sh,framing_business_context[cheap_talk],meaningful,0.996875,1.0,0.0031250000000000444,5
+gemma-2-9b-it,cycle,sh,framing_team_context[cheap_talk],meaningful,0.996875,0.996875,0.0,5
+gemma-2-9b-it,cycle,sh,no_sense,degraded,0.996875,0.921875,-0.07499999999999996,5
+gemma-2-9b-it,cycle,sh,silence,degraded,0.996875,0.98125,-0.015625,5
+gemma-2-9b-it,cycle,sh,counterfactual,degraded,0.996875,0.6268353174603175,-0.37003968253968245,5
+gemma-2-9b-it,cycle,sh,framing_competitive,adversarial (messages),0.996875,0.6077380952380953,-0.38913690476190466,5
+gemma-2-9b-it,cycle,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.996875,0.9016369047619047,-0.09523809523809523,5
+gemma-2-9b-it,star,pd,baseline_cheap_talk,meaningful,0.0796875,1.0,0.9203125,10
+gemma-2-9b-it,star,pd,framing_business,meaningful,0.0796875,1.0,0.9203125,5
+gemma-2-9b-it,star,pd,framing_team,meaningful,0.0796875,1.0,0.9203125,5
+gemma-2-9b-it,star,pd,framing_business_context[cheap_talk],meaningful,0.0796875,1.0,0.9203125,5
+gemma-2-9b-it,star,pd,framing_team_context[cheap_talk],meaningful,0.0796875,1.0,0.9203125,5
+gemma-2-9b-it,star,pd,no_sense,degraded,0.0796875,0.090625,0.010937500000000003,5
+gemma-2-9b-it,star,pd,silence,degraded,0.0796875,0.3036210317460317,0.22393353174603173,5
+gemma-2-9b-it,star,pd,counterfactual,degraded,0.0796875,0.78125,0.7015625,5
+gemma-2-9b-it,star,pd,framing_competitive,adversarial (messages),0.0796875,0.01875,-0.06093749999999999,5
+gemma-2-9b-it,star,pd,framing_competitive_context[cheap_talk],adversarial (prompt),0.0796875,1.0,0.9203125,5
+gemma-2-9b-it,star,sh,baseline_cheap_talk,meaningful,0.9296875,0.9984375,0.06874999999999998,10
+gemma-2-9b-it,star,sh,framing_business,meaningful,0.9296875,0.953125,0.0234375,5
+gemma-2-9b-it,star,sh,framing_team,meaningful,0.9296875,0.809375,-0.12031250000000004,5
+gemma-2-9b-it,star,sh,framing_business_context[cheap_talk],meaningful,0.9296875,0.996875,0.06718749999999996,5
+gemma-2-9b-it,star,sh,framing_team_context[cheap_talk],meaningful,0.9296875,1.0,0.0703125,5
+gemma-2-9b-it,star,sh,no_sense,degraded,0.9296875,0.721875,-0.20781249999999996,5
+gemma-2-9b-it,star,sh,silence,degraded,0.9296875,0.99375,0.06406250000000002,5
+gemma-2-9b-it,star,sh,counterfactual,degraded,0.9296875,0.726388888888889,-0.20329861111111103,5
+gemma-2-9b-it,star,sh,framing_competitive,adversarial (messages),0.9296875,0.6076884920634921,-0.32199900793650793,5
+gemma-2-9b-it,star,sh,framing_competitive_context[cheap_talk],adversarial (prompt),0.9296875,0.984375,0.0546875,5
