@@ -78,6 +78,10 @@ def parse_args() -> argparse.Namespace:
                         "scenario. 'none' reproduces every earlier run.")
     p.add_argument("--no-probe", action="store_true")
     p.add_argument("--quick", action="store_true")
+    p.add_argument("--games", nargs="+", default=["pd", "sh"],
+                   choices=["pd", "sh"],
+                   help="Restrict to these games. The default runs both, which "
+                        "is what every campaign so far did.")
     p.add_argument("--scenarios", nargs="+", default=None,
                    choices=[s[0] for s in SCENARIOS])
     p.add_argument("--skip-baseline", action="store_true")
@@ -197,7 +201,7 @@ def main():
 
         scenario_started_runs = grand_total_runs
         scenario_t0 = time.time()
-        for game in ["pd", "sh"]:
+        for game in args.games:
             for condition in conditions:
                 cfg = ExperimentConfig(
                     game=game, condition=condition,
