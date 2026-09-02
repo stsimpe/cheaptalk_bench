@@ -74,15 +74,16 @@ def _conditions_per_scenario() -> dict[str, int]:
     return {label: len(conditions) for label, conditions, *_ in SCENARIOS}
 
 
-def expected_runs(scenarios: list[str], n_runs: int) -> int:
-    """Every scenario is (arms x 2 games x n_runs) run files."""
+def expected_runs(scenarios: list[str], n_runs: int, n_games: int = 2) -> int:
+    """Every scenario is (arms x games x n_runs) run files."""
     arms = _conditions_per_scenario()
-    return sum(arms[s] * 2 * n_runs for s in scenarios)
+    return sum(arms[s] * n_games * n_runs for s in scenarios)
 
 
 def plan(model: str, session: str, topology: str, n_runs: int,
          n_rounds: int, out_root: str, max_new_tokens: int | None = None,
-         only: list[str] | None = None) -> dict:
+         only: list[str] | None = None, games: list[str] | None = None,
+         message_filter: str = "none") -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -108,17 +109,28 @@ def plan(model: str, session: str, topology: str, n_runs: int,
                 f"Pick the session that owns them, or fix the spelling."
             )
         scenarios = [s for s in scenarios if s in only]  # keep the canonical order
+    games = list(games) if games else ["pd", "sh"]
     short = model.split("/")[-1]
     out_dir_base = os.path.join(out_root, short)
-    # run_all_scenarios.py appends the topology suffix itself for non-star runs.
+    # Mirror the suffixes run_all_scenarios.py appends, in the same order --
+    # topology first, then the filter. If these drift apart, verify() looks in
+    # a directory the sweep never wrote and a good session fails.
     result_dir = out_dir_base if topology == "star" else f"{out_dir_base}_{topology}"
+    if message_filter != "none":
+        result_dir = f"{result_dir}_{message_filter}"
+    zip_name = f"{short}_{topology}_session{session}"
+    if message_filter != "none":
+        zip_name += f"_{message_filter}"
+    if games != ["pd", "sh"]:
+        zip_name += "_" + "".join(games)
     return {
         "model": model, "session": session, "topology": topology,
         "scenarios": scenarios, "n_runs": n_runs, "n_rounds": n_rounds,
+        "games": games, "message_filter": message_filter,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
-        "expected_runs": expected_runs(scenarios, n_runs),
-        "zip_base": os.path.join(out_root, "..", f"{short}_{topology}_session{session}"),
+        "expected_runs": expected_runs(scenarios, n_runs, len(games)),
+        "zip_base": os.path.join(out_root, "..", zip_name),
     }
 
 
@@ -136,6 +148,10 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
     ]
     if zip_mirror:
         cmd += ["--zip-mirror", zip_mirror]
+    if p.get("games") and p["games"] != ["pd", "sh"]:
+        cmd += ["--games", *p["games"]]
+    if p.get("message_filter", "none") != "none":
+        cmd += ["--message-filter", p["message_filter"]]
     cmd += ["--scenarios", *p["scenarios"]]
     return cmd
 
@@ -204,12 +220,21 @@ def main() -> int:
                          "whole session does not fit in the runtime limit, and to "
                          "resume after a session is killed part-way: pass the "
                          "scenarios that have not been produced yet.")
+    ap.add_argument("--games", nargs="+", default=None, choices=["pd", "sh"],
+                    help="Restrict to these games (default: both, as every "
+                         "campaign so far). The RQ4 filter cell only needs pd.")
+    ap.add_argument("--message-filter", default="none",
+                    choices=["none", "F1_competitive", "F3_relative_gain"],
+                    help="RQ4: drop a composed message before delivery when it "
+                         "trips the filter. Output lands in its own tree so it "
+                         "can never be ingested as the unfiltered cell.")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
 
     p = plan(args.model, args.session, args.topology, args.n_runs,
-             args.n_rounds, args.out_root, args.max_new_tokens, args.scenarios)
+             args.n_rounds, args.out_root, args.max_new_tokens, args.scenarios,
+             games=args.games, message_filter=args.message_filter)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)
@@ -217,6 +242,10 @@ def main() -> int:
     print(f"session {p['session']:<4} : {p['scenarios']}")
     print(f"topology     : {p['topology']}  (runs={p['n_runs']} rounds={p['n_rounds']} "
           f"max_new_tokens={p['max_new_tokens']})")
+    print(f"games        : {p['games']}")
+    if p["message_filter"] != "none":
+        print(f"FILTER       : {p['message_filter']}  "
+              f"-> separate tree: {p['result_dir']}")
     print(f"expecting    : {p['expected_runs']} run files")
     print(f"results ->   : {p['result_dir']}")
     print("=" * 70)
