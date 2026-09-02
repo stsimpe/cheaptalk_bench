@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from games import Game
 from llm_client import LLMClient
 from message_policies import (
+    apply_filter,
     apply_policy, MessagePolicy,
     get_context_framing_paragraph,
     get_extra_message_instruction, is_replacement_policy,
@@ -155,6 +156,7 @@ class Agent:
     message_policy: MessagePolicy = "meaningful"  # ablation control
     framing_type: str = "business"                # only used if message_policy == "framing"
     context_framing: str = "none"     # system-prompt framing; works in no_comm too
+    message_filter: str = "none"      # channel-side moderation (RQ4)
     topology_text: str | None = None  # per-topology prompt paragraph (None = star default)
     noise_seed: int = 0               # varies per run; feeds the no_sense RNG
     action_retries: int = 0           # resample once (or more) when the action is invalid
@@ -227,14 +229,26 @@ class Agent:
 
     # --- Cheap-talk path ---
 
-    def send_message(self, history: list[dict], round_num: int) -> tuple[str, str]:
+    def send_message(
+        self, history: list[dict], round_num: int
+    ) -> tuple[str, str, str, bool]:
+        """Return (delivered, composed, reasoning, blocked).
+
+        `delivered` is what the neighbours receive; `composed` is what the
+        agent actually wrote. They differ only when a channel filter fires, in
+        which case `delivered` is empty and the sender is never informed --
+        the filter models moderation inside the channel, not a change to the
+        agent.
+        """
         # Replacement policies (irrelevant/no_sense/silence) skip the LLM
         # call entirely -- they don't need any model output.
         if is_replacement_policy(self.message_policy):
-            return apply_policy(
+            canned = apply_policy(
                 self.message_policy, self.agent_id, round_num, "",
                 noise_seed=self.noise_seed,
-            ), ""
+            )
+            delivered, blocked = apply_filter(self.message_filter, canned)
+            return delivered, canned, "", blocked
 
         # Augmentation policies (counterfactual/framing) call the LLM but
         # inject an extra instruction into the user prompt to shape output.
@@ -252,10 +266,12 @@ class Agent:
         if len(words) > self.message_max_words:
             llm_message = " ".join(words[: self.message_max_words])
 
-        return apply_policy(
+        composed = apply_policy(
             self.message_policy, self.agent_id, round_num, llm_message,
             noise_seed=self.noise_seed,
-        ), reasoning
+        )
+        delivered, blocked = apply_filter(self.message_filter, composed)
+        return delivered, composed, reasoning, blocked
 
     def choose_action_cheap_talk(
         self,

@@ -70,6 +70,12 @@ def parse_args() -> argparse.Namespace:
                         "Lower (e.g. 256) speeds up T4 inference 1.5-2x.")
     p.add_argument("--request-delay", type=float, default=None)
     p.add_argument("--out-dir-base", default="results")
+    p.add_argument("--message-filter", default="none",
+                   choices=["none", "F1_competitive", "F3_relative_gain"],
+                   help="RQ4 channel moderation: drop a composed message before "
+                        "delivery when it trips the filter. Orthogonal to the "
+                        "message policy, so it can be combined with any "
+                        "scenario. 'none' reproduces every earlier run.")
     p.add_argument("--no-probe", action="store_true")
     p.add_argument("--quick", action="store_true")
     p.add_argument("--scenarios", nargs="+", default=None,
@@ -112,6 +118,11 @@ def main():
     # clique/line runs by accident.
     if args.topology != "star" and not args.out_dir_base.endswith(args.topology):
         args.out_dir_base = f"{args.out_dir_base}_{args.topology}"
+    # A filtered run is a different experimental cell from its unfiltered twin.
+    # Keeping it in a separate tree means a later ingest cannot silently mix
+    # the two into one cell, the way the legacy layouts once did.
+    if args.message_filter != "none":
+        args.out_dir_base = f"{args.out_dir_base}_{args.message_filter}"
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -196,6 +207,7 @@ def main():
                     message_max_words=args.message_max_words,
                     message_policy=policy, framing_type=framing_type,
                     context_framing=context_framing,
+                    message_filter=args.message_filter,
                     scenario=sc_label,
                     action_retries=args.action_retries,
                     out_dir=sc_out_dir,

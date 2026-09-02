@@ -13,6 +13,11 @@ from typing import Literal
 
 GameName = Literal["pd", "sh"]
 ConditionName = Literal["no_comm", "cheap_talk"]
+# RQ4: a moderation layer inside the channel. The filter inspects each composed
+# message and, when it fires, the message is not delivered -- the sender still
+# writes it and is never told, the neighbours simply receive nothing from it
+# that round. "none" keeps every pre-2026-09 run byte-identical.
+MessageFilter = Literal["none", "F1_competitive", "F3_relative_gain"]
 # "local" runs the model on the current machine via transformers (Kaggle / Colab
 # / your own GPU). The other providers are remote API calls.
 Provider = Literal["groq", "openai", "huggingface", "openrouter", "local"]
@@ -78,6 +83,10 @@ class ExperimentConfig:
     # System-prompt framing, independent of the message channel ("none" keeps
     # every pre-existing scenario byte-identical).
     context_framing: ContextFraming = "none"
+    # Channel-side moderation, independent of what the agent was told to write
+    # ("none" keeps every pre-existing scenario byte-identical). Orthogonal to
+    # message_policy on purpose: framing_competitive + a filter is the RQ4 cell.
+    message_filter: MessageFilter = "none"
     # Resample an invalid action up to this many times (0 = old behavior).
     action_retries: int = 0
     # Scenario label this run belongs to ("baseline", "framing_team_context",

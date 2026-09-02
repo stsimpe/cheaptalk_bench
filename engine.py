@@ -55,6 +55,7 @@ class GameEngine:
                     message_policy=self.cfg.message_policy,
                     framing_type=self.cfg.framing_type,
                     context_framing=getattr(self.cfg, "context_framing", "none"),
+                    message_filter=getattr(self.cfg, "message_filter", "none"),
                     topology_text=self.topology.describe(i),
                     noise_seed=self.cfg.seed + run_id,
                     action_retries=getattr(self.cfg, "action_retries", 0),
@@ -106,11 +107,15 @@ class GameEngine:
         }
 
     def _run_round_cheap_talk(self, round_num: int, agents: list[Agent], history: list[dict]) -> dict:
-        messages: dict[int, str] = {}
+        messages: dict[int, str] = {}          # what neighbours receive
+        composed: dict[int, str] = {}          # what the sender actually wrote
+        blocked: dict[int, bool] = {}
         comm_reasonings: dict[int, str] = {}
         for agent in agents:
-            msg, reasoning = agent.send_message(history, round_num)
+            msg, written, reasoning, was_blocked = agent.send_message(history, round_num)
             messages[agent.agent_id] = msg
+            composed[agent.agent_id] = written
+            blocked[agent.agent_id] = was_blocked
             comm_reasonings[agent.agent_id] = reasoning
 
         seen = self._messages_seen_by(messages)
@@ -119,7 +124,9 @@ class GameEngine:
         action_reasonings: dict[int, str] = {}
         invalid_flags: dict[int, bool] = {}
         for agent in agents:
-            own = messages[agent.agent_id]
+            # The sender knows what it wrote even if the channel dropped it --
+            # the filter moderates delivery, not the agent.
+            own = composed[agent.agent_id]
             received = seen[agent.agent_id]
             action, reasoning = agent.choose_action_cheap_talk(history, round_num, own, received)
             actions[agent.agent_id] = action
@@ -127,7 +134,7 @@ class GameEngine:
             invalid_flags[agent.agent_id] = action not in self.valid_actions
 
         payoffs = self._compute_payoffs(actions)
-        return {
+        record = {
             "round": round_num,
             "messages": messages,
             "messages_seen_by": seen,
@@ -137,6 +144,12 @@ class GameEngine:
             "invalid": invalid_flags,
             "payoffs": payoffs,
         }
+        # Only written when a filter is active, so unfiltered records keep the
+        # exact schema every earlier run has.
+        if any(blocked.values()) or getattr(self.cfg, "message_filter", "none") != "none":
+            record["messages_composed"] = composed
+            record["messages_blocked"] = blocked
+        return record
 
     def run_one(self, run_id: int, client) -> dict:
         agents = self.build_agents(client, run_id=run_id)

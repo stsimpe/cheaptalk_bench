@@ -26,6 +26,7 @@ Mapping to thesis RQs:
 from __future__ import annotations
 
 import random
+import re
 from typing import Literal
 
 # All currently supported policy names.
@@ -139,6 +140,59 @@ def get_extra_message_instruction(
     if policy == "framing":
         return FRAMING_INSTRUCTIONS.get(framing_type, FRAMING_INSTRUCTIONS["business"])
     return ""
+
+
+# ---------------------------------------------------------------- RQ4 filters
+#
+# A filter is channel-side moderation: it inspects a message that has already
+# been composed and decides whether the neighbours get to see it. It is
+# deliberately NOT a message policy -- a policy shapes what the agent is asked
+# to write, a filter shapes what is delivered, and RQ4 needs them crossed.
+#
+# The vocabularies come from filter_analysis.py, measured over the 58k logged
+# messages. On the corpus they fire as follows (PD, framing_competitive vs
+# baseline_cheap_talk):
+#
+#   F1_competitive     93.2%  vs  0.9%   -- blocks almost everything; the
+#                                           surviving 6.8% makes this close to
+#                                           the `silence` scenario we already ran
+#   F3_relative_gain   55.5%  vs  0.0%   -- leaves half the channel open, and
+#                                           what survives is MORE deceptive than
+#                                           what it blocks (90.8% of senders
+#                                           defect, vs 84.2% of the blocked)
+#
+# F3 is therefore the interesting one: no existing cell in the corpus is a
+# half-open, deception-enriched channel.
+MESSAGE_FILTERS: dict[str, set[str]] = {
+    "F1_competitive": {
+        "rival", "rivals", "compete", "competition", "competitive",
+        "outcompete", "outmaneuver", "dominate", "contest", "edge",
+        "advantage", "seize", "ahead", "behind", "beat", "win", "victory",
+    },
+    "F3_relative_gain": {
+        "outcompete", "outmaneuver", "dominate", "ahead", "behind",
+        "beat", "victory", "rival", "rivals",
+    },
+}
+
+
+def apply_filter(message_filter: str, message: str) -> tuple[str, bool]:
+    """Return (delivered_text, blocked).
+
+    A blocked message is delivered as the empty string, which is exactly what
+    the `silence` scenario delivers -- so a receiver cannot tell moderation
+    from a neighbour who said nothing, and the filtered condition sits on the
+    same axis as the two endpoints already measured (`no_comm`, `silence`).
+    """
+    if message_filter in ("none", "", None):
+        return message, False
+    vocab = MESSAGE_FILTERS.get(message_filter)
+    if vocab is None:
+        raise ValueError(f"Unknown message filter: {message_filter}")
+    tokens = set(re.findall(r"[a-z']+", str(message).lower()))
+    if vocab & tokens:
+        return "", True
+    return message, False
 
 
 def is_replacement_policy(policy: MessagePolicy) -> bool:
