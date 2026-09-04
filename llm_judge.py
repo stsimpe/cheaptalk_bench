@@ -236,7 +236,22 @@ def cmd_label(args):
     print(f"Loaded {len(cache)} cached judgments")
 
     df = collect_messages(args.roots, agents=args.agents, games=args.games)
-    if args.limit:
+    if args.from_csv:
+        # Judge exactly the messages in a sample file. Without this, --limit
+        # takes the FIRST n rows, which will not be the stratified sample that
+        # was hand-labelled, and validate would merge on an almost empty
+        # intersection and report a score computed from a handful of rows.
+        want = pd.read_csv(args.from_csv)
+        keys = set(zip(want["game"], want["message"]))
+        before = len(df)
+        df = df[[(g, m) in keys for g, m in zip(df["game"], df["message"])]].copy()
+        df = df.drop_duplicates(subset=["game", "message"])
+        print(f"Restricted to {args.from_csv}: {len(df)} of {before} messages "
+              f"({len(keys)} in the sample file)")
+        missing = len(keys) - len(df)
+        if missing:
+            print(f"  [warn] {missing} sample rows had no match in --roots")
+    elif args.limit:
         df = df.head(args.limit).copy()
     # Count DISTINCT texts: the cache keys on game||message, so a string that
     # recurs across runs is judged once. Counting rows would overstate the bill.
@@ -398,6 +413,11 @@ def main():
     p_label.add_argument("--games", nargs="+", default=None,
                          choices=["pd", "sh"],
                          help="Restrict to these games. Default: both.")
+    p_label.add_argument("--from-csv", default=None,
+                         help="Judge exactly the messages listed in this CSV "
+                              "(needs game and message columns). Use it with "
+                              "the file `sample` produced, so validate has a "
+                              "full intersection to score on.")
     p_label.add_argument("--limit", type=int, default=None,
                          help="Judge only the first N messages. Use it for a "
                               "cheap pilot before committing to the corpus.")
