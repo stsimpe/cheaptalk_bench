@@ -20,7 +20,18 @@ by (model, topology, cell, game). The hub-only view remains available via
 
 Design decisions:
   * The judge is a DIFFERENT model from the ones that played, to avoid
-    self-bias. Default: llama-3.3-70b-versatile on the free Groq tier.
+    self-bias, and it runs LOCALLY on the same hardware as the campaigns.
+    Default: microsoft/Phi-3.5-mini-instruct (3.8B) -- outside all three
+    families in the corpus (Qwen, Llama, Gemma), small enough to judge the
+    whole corpus in minutes on a T4, and reproducible by anyone with the repo
+    and no API key at all. A judge behind a free API tier is a dependency on a
+    service that can change or disappear; a judge in the same notebook is not.
+
+    Judge size does not have to match player size. The judge is an instrument,
+    not a subject, and the requirement on it is accuracy, which is measurable.
+    That is what `sample` and `validate` are for: draw a stratified sample,
+    label it by hand, and score each candidate judge against it. Use the
+    smallest judge that passes rather than the largest one available.
   * The judge sees ONLY the message text (plus minimal game context), never
     the action. This keeps its judgment about intent independent of outcome.
   * Structured JSON output with a confidence score allows thresholding.
@@ -299,6 +310,42 @@ def cmd_label(args):
               f"({r['n_deception']}/{r['n_coop_signalled']})")
 
 
+# ---------------- Sample command ----------------
+
+def cmd_sample(args):
+    """Draw a stratified sample for hand labelling.
+
+    A judge is only as good as its agreement with a person, and the way to
+    establish that is to label a sample by hand and score the judge against it.
+    The sample is stratified by cell so the rare cells are represented: a random
+    draw would be dominated by whichever cell has the most messages and would
+    say little about the ones a finding actually rests on.
+
+    Fill in `human_is_coop_signal` with true/false -- does the message signal an
+    intention to cooperate this round? The sender's action is deliberately left
+    out of the file, exactly as it is withheld from the judge, so the label
+    cannot be contaminated by knowing the outcome.
+    """
+    df = collect_messages(args.roots, agents=args.agents, games=args.games)
+    if df.empty:
+        raise SystemExit("No messages found. Check --roots.")
+    cells = df["cell"].nunique()
+    per = max(1, args.n // cells)
+    picked = (df.groupby("cell", group_keys=False)
+                .apply(lambda g: g.sample(min(len(g), per), random_state=args.seed)))
+    picked = picked.sample(frac=1.0, random_state=args.seed)
+    out = picked[["game", "cell", "model_id", "topology", "round", "message"]].copy()
+    out["human_is_coop_signal"] = ""
+    os.makedirs(args.out_dir, exist_ok=True)
+    path = os.path.join(args.out_dir, "human_labels_TEMPLATE.csv")
+    out.to_csv(path, index=False)
+    print(f"-> {path}  ({len(out)} messages across {cells} cells)")
+    print()
+    print("Fill in human_is_coop_signal with true/false, then score a judge:")
+    print("  python llm_judge.py validate --human-labels <that file> \\")
+    print("      --judge-labels cross_model_output_final/judge_labels_<model>.csv")
+
+
 # ---------------- Validate command ----------------
 
 def cmd_validate(args):
@@ -334,14 +381,16 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="command", required=True)
 
-    p_label = sub.add_parser("label", help="Judge all hub messages.")
+    p_label = sub.add_parser("label", help="Judge every message.")
     p_label.add_argument("--roots", nargs="+", required=True)
-    p_label.add_argument("--judge-provider", default="groq",
+    p_label.add_argument("--judge-provider", default="local",
                          choices=["groq", "openai", "huggingface", "openrouter", "local"])
-    p_label.add_argument("--judge-model", default="llama-3.3-70b-versatile",
-                         help="Free on Groq and not one of the five players, "
-                              "so no self-bias. Any instruct model can do this "
-                              "job; --limit lets you check a cheaper one.")
+    p_label.add_argument("--judge-model",
+                         default="microsoft/Phi-3.5-mini-instruct",
+                         help="3.8B, outside every family in the corpus, runs "
+                              "locally with no API key. Prove it is enough "
+                              "with `sample` + `validate` rather than "
+                              "assuming a bigger judge is needed.")
     p_label.add_argument("--out-dir", default="cross_model_output_final")
     p_label.add_argument("--agents", default="all", choices=["all", "hub"],
                          help="Judge every agent's messages, or only the "
@@ -356,6 +405,15 @@ def main():
                          help="Report how many judge calls would be made and "
                               "spend nothing.")
     p_label.set_defaults(func=cmd_label)
+
+    p_smp = sub.add_parser("sample", help="Draw a stratified sample to hand-label.")
+    p_smp.add_argument("--roots", nargs="+", required=True)
+    p_smp.add_argument("--out-dir", default="cross_model_output_final")
+    p_smp.add_argument("--agents", default="all", choices=["all", "hub"])
+    p_smp.add_argument("--games", nargs="+", default=None, choices=["pd", "sh"])
+    p_smp.add_argument("--n", type=int, default=120)
+    p_smp.add_argument("--seed", type=int, default=42)
+    p_smp.set_defaults(func=cmd_sample)
 
     p_val = sub.add_parser("validate", help="Compare judge vs human labels.")
     p_val.add_argument("--human-labels", required=True)
