@@ -21,10 +21,18 @@ by (model, topology, cell, game). The hub-only view remains available via
 Design decisions:
   * The judge is a DIFFERENT model from the ones that played, to avoid
     self-bias, and it runs LOCALLY on the same hardware as the campaigns.
-    Default: microsoft/Phi-3.5-mini-instruct (3.8B) -- outside all three
-    families in the corpus (Qwen, Llama, Gemma), small enough to judge the
-    whole corpus in minutes on a T4, and reproducible by anyone with the repo
-    and no API key at all. A judge behind a free API tier is a dependency on a
+    Default: HuggingFaceTB/SmolLM2-1.7B-Instruct -- trained from scratch by
+    HuggingFace, so outside all three families in the corpus (Qwen, Llama,
+    Gemma), tiny enough to judge the whole corpus in minutes on a T4, and
+    reproducible by anyone with the repo and no API key at all.
+
+    A judge must use an architecture that transformers supports NATIVELY.
+    llm_client passes trust_remote_code=True, so a model shipping its own
+    modeling file will run that file -- and Phi-3.5-mini ships one written
+    against an older transformers, which dies on the first generate with
+    `DynamicCache has no attribute from_legacy_cache`. The five corpus models
+    all use native architectures, which is why they never hit this. Check a
+    candidate judge with `--limit 3` before committing to it. A judge behind a free API tier is a dependency on a
     service that can change or disappear; a judge in the same notebook is not.
 
     Judge size does not have to match player size. The judge is an instrument,
@@ -401,11 +409,11 @@ def main():
     p_label.add_argument("--judge-provider", default="local",
                          choices=["groq", "openai", "huggingface", "openrouter", "local"])
     p_label.add_argument("--judge-model",
-                         default="microsoft/Phi-3.5-mini-instruct",
-                         help="3.8B, outside every family in the corpus, runs "
-                              "locally with no API key. Prove it is enough "
-                              "with `sample` + `validate` rather than "
-                              "assuming a bigger judge is needed.")
+                         default="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+                         help="Small, native architecture, outside every family "
+                              "in the corpus, runs locally with no API key. "
+                              "Prove it is enough with `sample` + `validate` "
+                              "rather than assuming a bigger judge is needed.")
     p_label.add_argument("--out-dir", default="cross_model_output_final")
     p_label.add_argument("--agents", default="all", choices=["all", "hub"],
                          help="Judge every agent's messages, or only the "
