@@ -78,6 +78,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import json
 import os
 import sys
@@ -131,6 +132,21 @@ Does this message signal an intention to cooperate this round?"""
 
 
 # ---------------- Judge client wrapper ----------------
+
+def prompt_fingerprint() -> str:
+    """Short hash of the judge prompt.
+
+    The cache key carries it because a verdict is only reusable if it was
+    produced by the same model AND the same question. Change JUDGE_SYSTEM
+    without this and every cached verdict is silently served against the new
+    prompt -- the same failure the judge-model key already prevents, one level
+    up. Old entries keyed without a fingerprint are still honoured on read, so
+    adding this does not throw away work already paid for.
+    """
+    return hashlib.sha1(
+        (JUDGE_SYSTEM + JUDGE_USER_TMPL).encode("utf-8")
+    ).hexdigest()[:8]
+
 
 def build_judge(provider: str, model_id: str):
     cfg = ModelConfig(
@@ -263,9 +279,16 @@ def cmd_label(args):
         df = df.head(args.limit).copy()
     # Count DISTINCT texts: the cache keys on game||message, so a string that
     # recurs across runs is judged once. Counting rows would overstate the bill.
-    keys = {f"{args.judge_model}||{r['game']}||{r['message']}"
-            for _, r in df.iterrows()}
-    n_new = len(keys - set(cache))
+    fp = prompt_fingerprint()
+    # Count DISTINCT texts still needing a call. A text is covered if the cache
+    # holds it under the current key or under the pre-fingerprint one.
+    need = set()
+    for _, r in df.iterrows():
+        key = f"{args.judge_model}||{fp}||{r['game']}||{r['message']}"
+        legacy = f"{args.judge_model}||{r['game']}||{r['message']}"
+        if key not in cache and legacy not in cache:
+            need.add(key)
+    n_new = len(need)
     print(f"Collected {len(df)} messages ({args.agents} agents); "
           f"{n_new} need a judge call, the rest are cached.")
     if args.estimate_only:
@@ -278,9 +301,12 @@ def cmd_label(args):
     verdicts = []
     cache_f = open(cache_path, "a", encoding="utf-8")
     for i, row in df.iterrows():
-        key = f"{args.judge_model}||{row['game']}||{row['message']}"
+        key = f"{args.judge_model}||{fp}||{row['game']}||{row['message']}"
+        legacy = f"{args.judge_model}||{row['game']}||{row['message']}"
         if key in cache:
             v = cache[key]
+        elif legacy in cache:
+            v = cache[legacy]
         else:
             v = judge_message(judge, row["game"], row["message"])
             cache[key] = v
@@ -378,10 +404,16 @@ def cmd_validate(args):
     """
     human = pd.read_csv(args.human_labels)
     judge = pd.read_csv(args.judge_labels)
-    merged = human.merge(
-        judge[["game", "message", "is_coop_signal"]],
-        on=["game", "message"], how="inner",
+    cols = ["game", "message", "is_coop_signal"]
+    if "cell" in judge.columns and "cell" not in human.columns:
+        cols.append("cell")
+    merged = human.merge(judge[cols], on=["game", "message"], how="inner")
+    # Human labels may be written as true/false text rather than booleans.
+    merged["human_is_coop_signal"] = (
+        merged["human_is_coop_signal"].astype(str).str.strip().str.lower()
+        .isin(["true", "1", "yes"])
     )
+    merged["is_coop_signal"] = merged["is_coop_signal"].astype(bool)
     if merged.empty:
         print("No overlap between human and judge labels -- check the message text keys.")
         return
@@ -398,6 +430,34 @@ def cmd_validate(args):
     print(f"  recall    = {recall:.1%}")
     print(f"  accuracy  = {acc:.1%}")
     print(f"  confusion: TP={tp} FP={fp} FN={fn} TN={tn}")
+
+    # Per cell. A judge can be excellent overall and useless on one scenario,
+    # and the aggregate hides exactly that: SmolLM2-1.7B scored 84% overall
+    # while getting 1 of 15 right on `counterfactual`, whose instruction forces
+    # IF/WOULD phrasing -- and hypotheticals are what it cannot tell from
+    # commitments. Excluding that one cell took the same judge to 95%.
+    if "cell" in merged.columns:
+        print("\n  per cell (correct / n):")
+        rows = []
+        for c, g in merged.groupby("cell"):
+            ok = int((g["human_is_coop_signal"] == g["is_coop_signal"]).sum())
+            rows.append((ok / len(g), c, ok, len(g)))
+        for frac, c, ok, tot in sorted(rows):
+            flag = "   <-- unusable" if frac < 0.6 else ""
+            print(f"    {c:42s} {ok:3d}/{tot:<3d} {frac:5.0%}{flag}")
+        worst = [c for frac, c, _, _ in rows if frac < 0.6]
+        if worst:
+            keep = merged[~merged["cell"].isin(worst)]
+            k_tp = int(((keep["human_is_coop_signal"]) & (keep["is_coop_signal"])).sum())
+            k_fp = int(((~keep["human_is_coop_signal"]) & (keep["is_coop_signal"])).sum())
+            k_fn = int(((keep["human_is_coop_signal"]) & (~keep["is_coop_signal"])).sum())
+            k_tn = int(((~keep["human_is_coop_signal"]) & (~keep["is_coop_signal"])).sum())
+            k_n = len(keep)
+            print(f"\n  excluding {worst}:")
+            print(f"    accuracy  = {(k_tp + k_tn) / k_n:.1%}  "
+                  f"precision = {k_tp / (k_tp + k_fp) if k_tp + k_fp else float('nan'):.1%}  "
+                  f"recall = {k_tp / (k_tp + k_fn) if k_tp + k_fn else float('nan'):.1%}"
+                  f"  (n={k_n})")
 
 
 def main():
