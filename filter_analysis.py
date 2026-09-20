@@ -91,6 +91,10 @@ def selectivity(df: pd.DataFrame, game: str) -> pd.DataFrame:
     rows = []
     for name in FILTERS:
         fire = g.groupby("cell")[name].mean()
+        tagged = sorted({c for c in g["cell"].unique() if "+" in c})
+        if tagged:
+            print(f"  [note] selectivity ignores {len(tagged)} tagged cell(s): "
+                  f"{', '.join(tagged[:4])}")
         harmful = fire.get(HARMFUL_CELL, float("nan"))
         benign = fire.reindex(BENIGN_CELLS).mean()
         rows.append({

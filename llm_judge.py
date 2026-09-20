@@ -91,7 +91,7 @@ from config import ModelConfig
 from llm_client import make_client
 from cross_model_analysis import discover_records, normalise_model_id
 from analysis import summarise_run
-from cross_model_analysis import cell_label
+from cross_model_analysis import base_cell, cell_label
 from games import GAMES
 
 # Topology and condition both enter the grouping key. `cell` distinguishes the
@@ -205,7 +205,10 @@ def collect_messages(roots: list[str], agents: str = "all",
         cell = cell_label(summary["scenario"], summary["condition"],
                           cfg.get("message_filter", "none"),
                           bool(cfg.get("topology_aware_comm_prompt", False)))
-        if skip_canned and cell in CANNED_CELLS:
+        # base_cell, not cell: a tagged variant such as no_sense+commfix is
+        # still a canned scenario, and the plain membership test let 24 of
+        # them through into the judge's input.
+        if skip_canned and base_cell(cell) in CANNED_CELLS:
             continue
         model_id = normalise_model_id(cfg.get("model", {}).get("model_id", "unknown"))
         topology = summary["topology"]
@@ -406,10 +409,25 @@ def cmd_validate(args):
     """
     human = pd.read_csv(args.human_labels)
     judge = pd.read_csv(args.judge_labels)
-    cols = ["game", "message", "is_coop_signal"]
-    if "cell" in judge.columns and "cell" not in human.columns:
+    # Merge on the cell as well when both sides carry it, and collapse the
+    # judge side first. The same sentence recurs across runs and agents, so
+    # merging on (game, message) alone is many-to-many: 120 hand labels came
+    # back as "validation on 1,481 messages", with per-cell counts like
+    # 298/298 that are one verdict counted 298 times. The judge's verdict is
+    # keyed on (model, prompt, game, message), so collapsing duplicates
+    # cannot change any answer -- it only stops them being counted twice.
+    keys = ["game", "message"]
+    if "cell" in judge.columns and "cell" in human.columns:
+        keys.append("cell")
+    cols = keys + ["is_coop_signal"]
+    if "cell" in judge.columns and "cell" not in cols:
         cols.append("cell")
-    merged = human.merge(judge[cols], on=["game", "message"], how="inner")
+    judge_unique = judge[cols].drop_duplicates(subset=keys)
+    dropped = len(judge) - len(judge_unique)
+    if dropped:
+        print(f"Collapsed {dropped} duplicate judge rows on {keys} "
+              f"({len(judge_unique)} distinct).")
+    merged = human.merge(judge_unique, on=keys, how="inner")
     # Human labels may be written as true/false text rather than booleans.
     merged["human_is_coop_signal"] = (
         merged["human_is_coop_signal"].astype(str).str.strip().str.lower()

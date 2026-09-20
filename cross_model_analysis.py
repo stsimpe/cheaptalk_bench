@@ -239,6 +239,20 @@ def cell_label(scenario: str, condition: str,
     return f"{label}+{'+'.join(tags)}" if tags else label
 
 
+def base_cell(cell: str) -> str:
+    """The cell without its variant tags: `silence+commfix` -> `silence`.
+
+    Use this wherever a list of cell names asks "which scenario family is
+    this?", never where it asks "which experimental condition is this?".
+    Tagging the label (2026-09-20) stopped filtered and corrected-prompt runs
+    from merging into their untagged twins, but it also broke every membership
+    test written as `cell in SOME_SET`: `no_sense+commfix` is not in
+    {"no_sense", "silence"}, so 24 canned messages leaked into the judge's
+    input before this helper existed.
+    """
+    return cell.split("+", 1)[0]
+
+
 def aggregate(master: pd.DataFrame) -> pd.DataFrame:
     rows = []
     grouped = master.groupby(["model_id", "topology", "cell", "game"])

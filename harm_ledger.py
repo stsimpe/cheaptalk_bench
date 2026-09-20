@@ -54,6 +54,13 @@ BAND = 0.05
 
 
 def build(master: pd.DataFrame) -> pd.DataFrame:
+    # Cells carrying a variant tag (framing_competitive+F3, silence+commfix)
+    # are intervention arms, not grid cells, and KIND does not classify them.
+    # Dropping them is right; dropping them silently is not.
+    skipped = sorted({c for c in master["cell"].unique() if "+" in c})
+    if skipped:
+        print(f"[note] not part of the ledger, {len(skipped)} tagged cell(s): "
+              f"{', '.join(skipped[:6])}{' ...' if len(skipped) > 6 else ''}")
     rows = []
     for (model, topology, game), sub in master.groupby(
             ["model_id", "topology", "game"]):
