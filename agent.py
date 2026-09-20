@@ -158,6 +158,7 @@ class Agent:
     context_framing: str = "none"     # system-prompt framing; works in no_comm too
     message_filter: str = "none"      # channel-side moderation (RQ4)
     topology_text: str | None = None  # per-topology prompt paragraph (None = star default)
+    communication_text: str | None = None  # per-topology routing sentence (None = legacy star)
     noise_seed: int = 0               # varies per run; feeds the no_sense RNG
     action_retries: int = 0           # resample once (or more) when the action is invalid
 
@@ -170,6 +171,7 @@ class Agent:
             message_max_words=self.message_max_words,
             topology_text=self.topology_text,
             context_framing_text=get_context_framing_paragraph(self.context_framing),
+            communication_text=self.communication_text,
         )
 
     def _history_text(self, history: list[dict]) -> str:

@@ -89,6 +89,11 @@ class ExperimentConfig:
     message_filter: MessageFilter = "none"
     # Resample an invalid action up to this many times (0 = old behavior).
     action_retries: int = 0
+    # Describe the routing of messages from the topology instead of from the
+    # hard-coded star sentence the cheap-talk prompt has carried since the
+    # first campaign (False = old behavior, byte-identical to the 1,420-run
+    # grid; True = the corrected prompt, used by the 2026-09 ablation).
+    topology_aware_comm_prompt: bool = False
     # Scenario label this run belongs to ("baseline", "framing_team_context",
     # ...). Set by the runner so every record self-identifies: without it the
     # only trace of the scenario is the output directory name, and a

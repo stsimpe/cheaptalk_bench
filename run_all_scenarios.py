@@ -76,6 +76,12 @@ def parse_args() -> argparse.Namespace:
                         "delivery when it trips the filter. Orthogonal to the "
                         "message policy, so it can be combined with any "
                         "scenario. 'none' reproduces every earlier run.")
+    p.add_argument("--topology-aware-comm-prompt", action="store_true",
+                   help="Describe message routing from the topology instead of "
+                        "the hard-coded star sentence the cheap-talk prompt has "
+                        "carried since the first campaign. Off reproduces every "
+                        "earlier run byte-for-byte; on is the corrected prompt "
+                        "(2026-09 ablation). Runs land in a separate tree.")
     p.add_argument("--no-probe", action="store_true")
     p.add_argument("--quick", action="store_true")
     p.add_argument("--games", nargs="+", default=["pd", "sh"],
@@ -127,6 +133,10 @@ def main():
     # the two into one cell, the way the legacy layouts once did.
     if args.message_filter != "none":
         args.out_dir_base = f"{args.out_dir_base}_{args.message_filter}"
+    # Same reasoning for the corrected prompt: it is a different prompt
+    # generation, and mixing the two inside one cell would be invisible later.
+    if args.topology_aware_comm_prompt:
+        args.out_dir_base = f"{args.out_dir_base}_commfix"
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -212,6 +222,7 @@ def main():
                     message_policy=policy, framing_type=framing_type,
                     context_framing=context_framing,
                     message_filter=args.message_filter,
+                    topology_aware_comm_prompt=args.topology_aware_comm_prompt,
                     scenario=sc_label,
                     action_retries=args.action_retries,
                     out_dir=sc_out_dir,

@@ -128,6 +128,20 @@ pairwise game on every edge you have.
 
 # -------------------- CHEAP TALK --------------------
 
+# The routing sentence the cheap-talk prompt carried before 2026-09-20. It
+# describes a star, and it was emitted verbatim on every topology, so the 500
+# cycle cheap-talk runs of the main grid were told about a hub they did not
+# have. Delivery never read the prompt (engine._messages_seen_by works off
+# topology.neighbors), so the corpus is a correctly wired ring throughout; what
+# was wrong is what the agents were told. Kept as the DEFAULT so those runs stay
+# byte-reproducible; pass topology.describe_communication(agent_id) instead to
+# get the corrected prompt.
+STAR_COMMUNICATION_LEGACY = (
+    "the central agent broadcasts a single message that reaches all peripheral "
+    "agents; each peripheral agent sends a single message that reaches only the "
+    "central agent"
+)
+
 CT_SYSTEM = """You are a strategic agent in a repeated game experiment. Your sole \
 objective is to maximize your own cumulative score across all rounds. You do not know \
 in advance how many rounds will be played.
@@ -146,10 +160,8 @@ Actions available: {action_a} or {action_b}.
 ### Communication
 
 Before each round's action, every agent sends ONE free-form message to its neighbors. \
-Messages travel only along edges: the central agent broadcasts a single message that \
-reaches all peripheral agents; each peripheral agent sends a single message that \
-reaches only the central agent. Messages are cheap talk — costless and non-binding. \
-No mechanism enforces what anyone says.
+Messages travel only along edges: {communication}. Messages are cheap talk — costless \
+and non-binding. No mechanism enforces what anyone says.
 
 Your message must be a single sentence of at most {max_words} words.
 
@@ -205,6 +217,7 @@ def build_system_prompt(
     message_max_words: int = 20,
     topology_text: str | None = None,
     context_framing_text: str = "",
+    communication_text: str | None = None,
 ) -> str:
     # topology_text comes from topology.describe(agent_id); the fallback keeps
     # old call sites (and the 380 star runs) byte-identical.
@@ -223,7 +236,13 @@ def build_system_prompt(
     if condition == "no_comm":
         return NO_COMM_SYSTEM.format(**kwargs)
     elif condition == "cheap_talk":
-        return CT_SYSTEM.format(max_words=message_max_words, **kwargs)
+        # None keeps the legacy star sentence, so every run made before
+        # 2026-09-20 reproduces byte-for-byte on any topology.
+        return CT_SYSTEM.format(
+            max_words=message_max_words,
+            communication=communication_text or STAR_COMMUNICATION_LEGACY,
+            **kwargs,
+        )
     raise ValueError(f"Unknown condition: {condition}")
 
 

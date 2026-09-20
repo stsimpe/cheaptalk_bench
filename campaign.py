@@ -83,7 +83,8 @@ def expected_runs(scenarios: list[str], n_runs: int, n_games: int = 2) -> int:
 def plan(model: str, session: str, topology: str, n_runs: int,
          n_rounds: int, out_root: str, max_new_tokens: int | None = None,
          only: list[str] | None = None, games: list[str] | None = None,
-         message_filter: str = "none") -> dict:
+         message_filter: str = "none",
+         comm_fix: bool = False) -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -118,15 +119,20 @@ def plan(model: str, session: str, topology: str, n_runs: int,
     result_dir = out_dir_base if topology == "star" else f"{out_dir_base}_{topology}"
     if message_filter != "none":
         result_dir = f"{result_dir}_{message_filter}"
+    if comm_fix:
+        result_dir = f"{result_dir}_commfix"
     zip_name = f"{short}_{topology}_session{session}"
     if message_filter != "none":
         zip_name += f"_{message_filter}"
+    if comm_fix:
+        zip_name += "_commfix"
     if games != ["pd", "sh"]:
         zip_name += "_" + "".join(games)
     return {
         "model": model, "session": session, "topology": topology,
         "scenarios": scenarios, "n_runs": n_runs, "n_rounds": n_rounds,
         "games": games, "message_filter": message_filter,
+        "comm_fix": comm_fix,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
         "expected_runs": expected_runs(scenarios, n_runs, len(games)),
@@ -152,6 +158,8 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
         cmd += ["--games", *p["games"]]
     if p.get("message_filter", "none") != "none":
         cmd += ["--message-filter", p["message_filter"]]
+    if p.get("comm_fix"):
+        cmd += ["--topology-aware-comm-prompt"]
     cmd += ["--scenarios", *p["scenarios"]]
     return cmd
 
@@ -228,13 +236,19 @@ def main() -> int:
                     help="RQ4: drop a composed message before delivery when it "
                          "trips the filter. Output lands in its own tree so it "
                          "can never be ingested as the unfiltered cell.")
+    ap.add_argument("--topology-aware-comm-prompt", action="store_true",
+                    help="Corrected cheap-talk prompt: routing described from "
+                         "the topology instead of the legacy star sentence. "
+                         "Output lands in its own tree; off reproduces the "
+                         "1,420-run grid byte-for-byte.")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
 
     p = plan(args.model, args.session, args.topology, args.n_runs,
              args.n_rounds, args.out_root, args.max_new_tokens, args.scenarios,
-             games=args.games, message_filter=args.message_filter)
+             games=args.games, message_filter=args.message_filter,
+             comm_fix=args.topology_aware_comm_prompt)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)
@@ -243,6 +257,9 @@ def main() -> int:
     print(f"topology     : {p['topology']}  (runs={p['n_runs']} rounds={p['n_rounds']} "
           f"max_new_tokens={p['max_new_tokens']})")
     print(f"games        : {p['games']}")
+    if p.get("comm_fix"):
+        print(f"PROMPT       : topology-aware communication paragraph "
+              f"-> separate tree: {p['result_dir']}")
     if p["message_filter"] != "none":
         print(f"FILTER       : {p['message_filter']}  "
               f"-> separate tree: {p['result_dir']}")

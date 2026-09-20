@@ -57,6 +57,14 @@ class GameEngine:
                     context_framing=getattr(self.cfg, "context_framing", "none"),
                     message_filter=getattr(self.cfg, "message_filter", "none"),
                     topology_text=self.topology.describe(i),
+                    # Opt-in (default off): the cheap-talk prompt otherwise
+                    # describes star routing on every topology. See
+                    # prompts.STAR_COMMUNICATION_LEGACY.
+                    communication_text=(
+                        self.topology.describe_communication(i)
+                        if getattr(self.cfg, "topology_aware_comm_prompt", False)
+                        else None
+                    ),
                     noise_seed=self.cfg.seed + run_id,
                     action_retries=getattr(self.cfg, "action_retries", 0),
                 )

@@ -14,8 +14,8 @@ channel's existence -- is what sets the sign:
 
   meaningful   baseline_cheap_talk, the prosocial/neutral framings, and the
                context arms whose messages are unconstrained
-  degraded     no_sense (scrambled), silence (empty), counterfactual (wrong
-               sender attribution)
+  degraded     no_sense (scrambled), silence (empty), counterfactual (IF/WOULD
+               message phrasing)
   adversarial  framing_competitive -- the competitive frame shaping the messages
                themselves. Note that framing_competitive_context[cheap_talk] is
                NOT adversarial content: the frame sits in the system prompt and

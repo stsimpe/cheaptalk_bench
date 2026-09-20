@@ -7,6 +7,14 @@ these four things:
     neighbors(agent_id) -> list[int]
     edges()             -> list[tuple[int, int]]
     describe(agent_id)  -> str   (topology paragraph for that agent's prompt)
+    describe_communication(agent_id) -> str  (routing sentence for the
+                                              cheap-talk prompt)
+
+`describe_communication` exists because the cheap-talk system prompt used to
+carry one hard-coded routing sentence written for the star, which every
+topology then received (see prompts.py, STAR_COMMUNICATION_LEGACY). It is
+opt-in: the engine only uses it when `topology_aware_comm_prompt` is set, so
+the campaigns run before 2026-09-20 stay byte-reproducible.
 
 Message semantics are identical everywhere: each agent sends ONE message per
 round and it is delivered to all of its neighbors, nothing else. What changes
@@ -73,6 +81,13 @@ class StarTopology:
             f"sum of payoffs across all your edges."
         )
 
+    def describe_communication(self, agent_id: int) -> str:
+        return (
+            "the central agent broadcasts a single message that reaches all "
+            "peripheral agents; each peripheral agent sends a single message "
+            "that reaches only the central agent"
+        )
+
     def to_dict(self) -> dict:
         return {
             "type": self.name,
@@ -109,6 +124,11 @@ class CliqueTopology:
             f"Each round, every agent chooses one action that is applied in the "
             f"pairwise game on each of their edges. Your payoff in a round is the "
             f"sum of payoffs across all your edges."
+        )
+
+    def describe_communication(self, agent_id: int) -> str:
+        return (
+            "each agent sends a single message that reaches every other agent"
         )
 
     def to_dict(self) -> dict:
@@ -149,6 +169,12 @@ class LineTopology:
             f"Each round, every agent chooses one action that is applied in the "
             f"pairwise game on each of their edges. Your payoff in a round is the "
             f"sum of payoffs across all your edges."
+        )
+
+    def describe_communication(self, agent_id: int) -> str:
+        return (
+            "each agent sends a single message that reaches the agents directly "
+            "adjacent to it in the chain, and no one else"
         )
 
     def to_dict(self) -> dict:
@@ -193,6 +219,12 @@ class CycleTopology:
             f"Each round, every agent chooses one action that is applied in the "
             f"pairwise game on each of their edges. Your payoff in a round is the "
             f"sum of payoffs across all your edges."
+        )
+
+    def describe_communication(self, agent_id: int) -> str:
+        return (
+            "each agent sends a single message that reaches the two agents "
+            "adjacent to it in the ring, and no one else"
         )
 
     def to_dict(self) -> dict:
