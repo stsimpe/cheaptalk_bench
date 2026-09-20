@@ -17,25 +17,18 @@ For each completed run we compute metrics that map to specific RQs:
     - hub_exploitation_rate: in cheap-talk PD specifically, how often
       does the hub defect after sending a cooperative-sounding message?
 
-  RQ1 message content (qualitative, cheap-talk only):
-    - top_cooperative_keywords: most frequent words in messages of
-      rounds where the sender then cooperated
-    - keyword_action_correlation: P(cooperate | "stag" in message), etc.
+This module is a LIBRARY, not a command. Two functions are its whole public
+surface -- `scenario_of(record)` and `summarise_run(record)` -- and six modules
+import them, `cross_model_analysis.py` first among them. The single-model CLI
+and the keyword analysis that used to live here were removed on 2026-09-20/21;
+the note at the foot of the file says why.
 
-Usage:
-    python analysis.py --results-dir results
+    from analysis import summarise_run, scenario_of
 """
 from __future__ import annotations
 
-import argparse
-import glob
-import json
-import os
-import re
-from collections import Counter, defaultdict
-from statistics import mean, stdev
-
-import pandas as pd
+from collections import defaultdict
+from statistics import mean
 
 from games import GAMES
 

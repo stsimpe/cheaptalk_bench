@@ -1,4 +1,4 @@
-model_id,topology,game,cell,scenario,condition,no_comm_mean,no_comm_ci_lo,no_comm_ci_hi,cheap_talk_mean,cheap_talk_ci_lo,cheap_talk_ci_hi,delta,n_no_comm,n_cheap_talk
+model_id,topology,game,cell,scenario,condition,no_comm_mean,no_comm_ci_lo,no_comm_ci_hi,open_arm_mean,open_arm_ci_lo,open_arm_ci_hi,delta,n_no_comm,n_cheap_talk
 Llama-3.1-8B-Instruct,cycle,pd,baseline_cheap_talk,baseline_cheap_talk,cheap_talk,0.5681483361247864,0.4462616522018644,0.7216714882674381,0.990625,0.978125,1.0,0.42247666387521354,5,5
 Llama-3.1-8B-Instruct,cycle,pd,counterfactual,counterfactual,cheap_talk,0.5681483361247864,0.4462616522018644,0.7216714882674381,0.99375,0.9875,1.0,0.4256016638752136,5,5
 Llama-3.1-8B-Instruct,cycle,pd,framing_business,framing_business,cheap_talk,0.5681483361247864,0.4462616522018644,0.7216714882674381,0.78125,0.634375,0.9125,0.21310166387521357,5,5

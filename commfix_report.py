@@ -107,10 +107,23 @@ def main() -> None:
             # a change. The verdict is a two-sided Mann-Whitney at the run
             # level; the floor is printed beside it so a "significant" move
             # smaller than the control's own drift is visible for what it is.
+            # The test needs two distinct values ACROSS the two arms, not two
+            # within them. The first guard here counted values per arm and
+            # summed: two constant arms scored 1+1=2 and failed it, so a cell
+            # that went 0.00 -> 1.00 in every single run -- the largest change
+            # possible -- was reported as "identical".
+            comparable = bool(o) and bool(n) and len(set(o) | set(n)) > 1
             p = (mannwhitneyu(o, n, alternative="two-sided").pvalue
-                 if len(set(o)) + len(set(n)) > 2 else float("nan"))
-            if p != p:
-                verdict = "identical"
+                 if comparable else float("nan"))
+            no_floor = floor != floor          # NaN: this model has no control
+            if not o:
+                verdict = "no run under the old prompt"
+            elif not comparable:
+                verdict = "identical in every run"
+            elif no_floor and p < 0.05:
+                verdict = "MOVED (no control measured)"
+            elif no_floor:
+                verdict = "no change (no control measured)"
             elif p < 0.05 and abs(move) > floor:
                 verdict = "MOVED"
             elif p < 0.05:

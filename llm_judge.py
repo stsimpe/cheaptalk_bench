@@ -385,8 +385,11 @@ def cmd_sample(args):
         raise SystemExit("No messages found. Check --roots.")
     cells = df["cell"].nunique()
     per = max(1, args.n // cells)
-    picked = (df.groupby("cell", group_keys=False)
-                .apply(lambda g: g.sample(min(len(g), per), random_state=args.seed)))
+    # Plain loop rather than groupby.apply: pandas deprecated applying over
+    # the grouping column, and the two documented escapes either drop `cell`
+    # from the result (include_groups=False) or change what is sampled.
+    picked = pd.concat([g.sample(min(len(g), per), random_state=args.seed)
+                        for _, g in df.groupby("cell", sort=True)])
     picked = picked.sample(frac=1.0, random_state=args.seed)
     out = picked[["game", "cell", "model_id", "topology", "round", "message"]].copy()
     out["human_is_coop_signal"] = ""

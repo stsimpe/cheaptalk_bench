@@ -88,13 +88,15 @@ def annotate(df: pd.DataFrame) -> pd.DataFrame:
 
 def selectivity(df: pd.DataFrame, game: str) -> pd.DataFrame:
     g = df[df["game"] == game]
+    # Once, not once per filter: the set of tagged cells does not depend on
+    # which lexicon is being scored.
+    tagged = sorted({c for c in g["cell"].unique() if "+" in c})
+    if tagged:
+        print(f"  [note] selectivity ignores {len(tagged)} tagged cell(s): "
+              f"{', '.join(tagged[:4])}")
     rows = []
     for name in FILTERS:
         fire = g.groupby("cell")[name].mean()
-        tagged = sorted({c for c in g["cell"].unique() if "+" in c})
-        if tagged:
-            print(f"  [note] selectivity ignores {len(tagged)} tagged cell(s): "
-                  f"{', '.join(tagged[:4])}")
         harmful = fire.get(HARMFUL_CELL, float("nan"))
         benign = fire.reindex(BENIGN_CELLS).mean()
         rows.append({

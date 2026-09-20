@@ -3,3 +3,4 @@ python-dotenv>=1.0.0
 numpy>=1.24
 pandas>=2.0
 matplotlib>=3.7
+scipy>=1.10        # commfix_report.py: Mann-Whitney over runs
