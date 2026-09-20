@@ -73,8 +73,9 @@ reproduces byte-for-byte: `context_framing`, `message_filter`, `action_retries`,
 ├── kaggle_*.ipynb         the four campaign notebooks (all call campaign.py)
 ├── cross_model_output_final/  the released CSVs behind every number
 ├── figures/               the released figures
-├── notebooks/             experiment proposals for the next stage
-└── docs/                  Kaggle setup, and two historical notes
+├── notebooks/             proposals for the next stage: clique, mixed
+│                          populations, a Bertrand pricing pilot
+└── docs/                  Kaggle setup, and the May pilot's findings
 ```
 
 ## One command per claim
