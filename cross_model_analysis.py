@@ -219,8 +219,18 @@ def cell_label(scenario: str, condition: str,
     -- so they must never be averaged into one cell. Grouping on `scenario`
     alone silently did exactly that. Every other scenario has exactly one
     condition, so its label is just the scenario name.
+
+    Both knobs are tagged only on the OPEN arm, because neither can reach a
+    closed one: a `no_comm` run has no message phase, so the filter never
+    runs, and build_system_prompt ignores `communication_text` for that
+    condition -- the two prompts come out byte-identical. Tagging it anyway
+    split one experiment into `no_comm` and `no_comm+commfix`: the first bug
+    mirrored, a silent split instead of a silent merge, and it fragmented the
+    anchor that every delta below is measured against.
     """
     label = f"{scenario}[{condition}]" if scenario.endswith("_context") else scenario
+    if condition != "cheap_talk":
+        return label
     tags = []
     if message_filter and message_filter != "none":
         tags.append(message_filter.split("_")[0])   # F3_relative_gain -> F3
@@ -255,19 +265,44 @@ def aggregate(master: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
-    """Cheap-talk Δ vs no_comm baseline, per (model, game, scenario)."""
+    """Open-arm Δ vs the no_comm anchor, per (model, topology, game, cell).
+
+    The anchor is selected on `cell`, the same key aggregate() groups on.
+    It used to be selected on `scenario`, which was the same set of rows
+    until the filter/commfix tags existed and then stopped being: the guard
+    below skips the string "no_comm" while the anchor matched anything whose
+    scenario was no_comm, tagged or not.
+
+    When a run generation brought its own no_comm arm, that arm is the
+    anchor. The corrected-prompt ablation re-ran `baseline`, so its closed
+    arm is a fresh measurement of an unchanged prompt -- which is exactly
+    what commfix_report.py calls the noise floor, and the reason it exists:
+    the same cell measured 26 days apart moved 0.109 -> 0.241. Anchoring a
+    commfix cell on the old session's no_comm would fold that drift into
+    every delta. Generations that ran no closed arm at all -- the F1/F3
+    filter cells are framing_competitive only -- fall back to the pooled
+    anchor, and `anchor_comm_prompt` records which of the two was used.
+    """
     rows = []
+    has_gen = "comm_prompt" in master.columns
     for (model, topology, game), sub in master.groupby(["model_id", "topology", "game"]):
-        no_comm = sub[sub["scenario"] == "no_comm"]["coop_rate_overall"].dropna().values
-        if len(no_comm) == 0:
+        anchor_pool = sub[sub["cell"] == "no_comm"]
+        if anchor_pool["coop_rate_overall"].dropna().empty:
             continue
-        nc_mean, nc_lo, nc_hi = bootstrap_ci(no_comm)
         for cell, sc_sub in sub.groupby("cell"):
             if cell == "no_comm":
                 continue
             ct_vals = sc_sub["coop_rate_overall"].dropna().values
             if len(ct_vals) == 0:
                 continue
+            anchor, anchor_gen = anchor_pool, "pooled"
+            if has_gen:
+                gen = sc_sub["comm_prompt"].iloc[0]
+                same = anchor_pool[anchor_pool["comm_prompt"] == gen]
+                if not same["coop_rate_overall"].dropna().empty:
+                    anchor, anchor_gen = same, gen
+            no_comm = anchor["coop_rate_overall"].dropna().values
+            nc_mean, nc_lo, nc_hi = bootstrap_ci(no_comm)
             ct_mean, ct_lo, ct_hi = bootstrap_ci(ct_vals)
             rows.append({
                 "model_id": model,
@@ -286,6 +321,7 @@ def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
                 "open_arm_ci_lo": ct_lo,
                 "open_arm_ci_hi": ct_hi,
                 "delta": ct_mean - nc_mean,
+                "anchor_comm_prompt": anchor_gen,
                 "n_no_comm": len(no_comm),
                 "n_cheap_talk": len(ct_vals),
             })

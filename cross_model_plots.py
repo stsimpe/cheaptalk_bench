@@ -356,7 +356,13 @@ def collect_trajectories(roots: list[str]):
         cfg = data.get("config", {})
         model_id = normalise_model_id(cfg.get("model", {}).get("model_id", "unknown"))
         summary = summarise_run(data)
-        cell = cell_label(summary["scenario"], summary["condition"])
+        # All four arguments: a filtered or corrected-prompt run is its own
+        # cell, exactly as in the master table. With two, this was the one
+        # call site left merging them, so the trajectory panels averaged the
+        # two prompt generations into one line.
+        cell = cell_label(summary["scenario"], summary["condition"],
+                          cfg.get("message_filter", "none"),
+                          bool(cfg.get("topology_aware_comm_prompt", False)))
         topology = summary["topology"]
         game_name = cfg.get("game")
         if game_name not in GAMES:

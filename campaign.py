@@ -173,46 +173,56 @@ def verify(result_dir: str, expected: int, topology: str,
     requested. That catches a run written under the wrong scenario before the
     data reaches the analysis, where a mislabelled framing_*_context run would
     quietly merge into baseline.
+
+    Only the requested scenarios are judged. Scenarios already sitting in the
+    directory are NOT an error: --scenarios exists precisely so a killed
+    session can be resumed into the same tree, and before 2026-09-20 a
+    successful resume returned exit 3 and never wrote its zip. Everything
+    read about a run -- its count, its topology, whether it parses, whether
+    its recorded label matches its folder -- is scoped the same way, so one
+    corrupt leftover from an earlier session cannot fail a resume either.
     """
     files = [f for f in glob.glob(os.path.join(result_dir, "**", "*.json"), recursive=True)
              if not os.path.basename(f).startswith("_progress")]
+    requested = set(scenarios) if scenarios else None
     per_scenario: Counter = Counter()
+    other_scenarios: Counter = Counter()
     topologies: Counter = Counter()
     unreadable: list[str] = []
+    other_unreadable: list[str] = []
     mislabelled: list[str] = []
     for f in files:
+        folder = os.path.relpath(f, result_dir).split(os.sep)[0]
+        in_scope = requested is None or folder in requested
         try:
             with open(f, encoding="utf-8") as fh:
                 rec = json.load(fh)
+            if not in_scope:
+                other_scenarios[folder] += 1
+                continue
             # Campaign 1 predates the topology layer and records no "type".
             # Reading that as unreadable marked 80 of the 140 star files
             # corrupt; "star" is the same default analysis.summarise_run uses.
             topologies[rec["topology"].get("type", "star")] += 1
-            folder = os.path.relpath(f, result_dir).split(os.sep)[0]
             per_scenario[folder] += 1
             recorded = rec["config"].get("scenario", "")
             if recorded and recorded != folder:
                 mislabelled.append(f"{f}: records {recorded!r}, sits in {folder!r}")
         except Exception:
-            unreadable.append(f)
+            (unreadable if in_scope else other_unreadable).append(f)
 
-    # Scenarios already in the directory that this call did not ask for are
-    # NOT an error: --scenarios exists precisely so a killed session can be
-    # resumed into the same tree. Judge only what was requested, and report
-    # the rest. (Before 2026-09-20 they failed the run, so a successful
-    # resume returned exit 3 and its zip was never written.)
-    requested = set(scenarios) if scenarios else set(per_scenario)
-    pre_existing = sorted(set(per_scenario) - requested)
+    if requested is None:
+        requested = set(per_scenario)
     missing = sorted(requested - set(per_scenario))
-    found = sum(per_scenario[s] for s in requested)
-    mislabelled = [m for m in mislabelled
-                   if any(f"sits in '{s}'" in m for s in requested)] if scenarios else mislabelled
+    found = sum(per_scenario.values())
 
     report = {"found": found, "expected": expected, "found_all_scenarios": len(files),
               "per_scenario": dict(per_scenario), "topologies": dict(topologies),
               "unreadable": unreadable, "mislabelled": mislabelled,
-              "pre_existing_scenarios": pre_existing, "missing_scenarios": missing}
-    ok = (bool(files)
+              "pre_existing_scenarios": sorted(other_scenarios),
+              "pre_existing_unreadable": other_unreadable,
+              "missing_scenarios": missing}
+    ok = (found > 0
           and not unreadable
           and not mislabelled
           and not missing
@@ -306,6 +316,13 @@ def main() -> int:
         print(f"[note] the directory also holds earlier scenarios, not judged "
               f"here: {report['pre_existing_scenarios']} "
               f"({report['found_all_scenarios']} files in total)")
+    if report["pre_existing_unreadable"]:
+        # Reported, never fatal: these belong to a scenario this call did not
+        # produce, so failing on them would block exactly the resume the
+        # scoping above exists to allow.
+        print(f"[note] {len(report['pre_existing_unreadable'])} unreadable "
+              f"file(s) in those earlier scenarios: "
+              f"{report['pre_existing_unreadable'][:3]}")
     if report["mislabelled"]:
         print(f"[FAIL] {len(report['mislabelled'])} run(s) record a scenario "
               f"that disagrees with their directory: {report['mislabelled'][:3]}")
