@@ -64,7 +64,7 @@ CELL_ORDER = [
 ]
 
 # Draw star before cycle; anything else after, alphabetically.
-TOPOLOGY_ORDER = ["star", "cycle"]
+TOPOLOGY_ORDER = ["star", "cycle", "clique", "line"]
 
 # The three frames. Each was delivered three ways -- see the dissociation plot.
 FRAMINGS = ["business", "team", "competitive"]
