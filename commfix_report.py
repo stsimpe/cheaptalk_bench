@@ -1,4 +1,4 @@
-"""Did the corrected prompt change the ring cells? Judged against a noise floor.
+"""Did the corrected prompt change the ring cells? Tested, with a control.
 
 The 2026-09 ablation re-runs four PD cycle cells with the routing sentence taken
 from the topology instead of the hard-coded star one. Comparing the new mean to
@@ -7,8 +7,11 @@ because the seed does not fix sampling (see TRACK_RECORD, 2026-08-25).
 
 The ablation therefore also re-runs the `no_comm` arm of `baseline`, which never
 carried the wrong sentence and whose prompt is byte-identical to before. How far
-THAT cell moves is the noise floor. A cheap-talk cell has moved for reasons
-beyond sampling only if it moved further.
+THAT cell moves is what sampling alone does to this model in this session.
+
+The verdict per cell is a two-sided Mann-Whitney over the runs; the control's
+own drift is printed beside it, because a "significant" move smaller than the
+drift of a cell that could not have changed is not evidence about the prompt.
 
     python cheaptalk_bench/commfix_report.py \\
         --old-roots <the ten grid folders> \\
@@ -22,6 +25,8 @@ import glob
 import json
 import os
 import statistics
+
+from scipy.stats import mannwhitneyu
 
 from analysis import scenario_of, summarise_run
 from cross_model_analysis import cell_label
@@ -82,9 +87,9 @@ def main() -> None:
         print(f"  {m:24s} {mean(o):6.3f} {mean(n):6.3f} {floors[m]:+7.3f}"
               f"   (n={len(o)} vs {len(n)})")
 
-    print("\nTHE RE-RUN CELLS -- moved further than the floor?")
+    print("\nTHE RE-RUN CELLS -- Mann-Whitney over runs, control drift beside it")
     header = (f"  {'model':24s} {'cell':22s} {'old':>6s} {'new':>6s} {'move':>7s} "
-              f"{'floor':>6s}  verdict")
+              f"{'floor':>6s} {'p':>6s}  verdict")
     print(header)
     verdicts = collections.Counter()
     for m in models:
@@ -96,15 +101,25 @@ def main() -> None:
                 continue
             move = mean(n) - mean(o)
             floor = floors[m]
-            if floor != floor:                      # NaN
-                verdict = "no floor measured"
-            elif abs(move) <= floor:
-                verdict = "within noise"
-            else:
+            # The control is context, not a threshold. Using one n=5 cell as a
+            # cutoff punished the models whose control happened to be stable:
+            # gemma-2-9b drew a floor of 0.003, which called a move of -0.016
+            # a change. The verdict is a two-sided Mann-Whitney at the run
+            # level; the floor is printed beside it so a "significant" move
+            # smaller than the control's own drift is visible for what it is.
+            p = (mannwhitneyu(o, n, alternative="two-sided").pvalue
+                 if len(set(o)) + len(set(n)) > 2 else float("nan"))
+            if p != p:
+                verdict = "identical"
+            elif p < 0.05 and abs(move) > floor:
                 verdict = "MOVED"
+            elif p < 0.05:
+                verdict = "p<0.05 but under the control's own drift"
+            else:
+                verdict = "no change"
             verdicts[verdict] += 1
             print(f"  {m:24s} {cell:22s} {mean(o):6.3f} {mean(n):6.3f} "
-                  f"{move:+7.3f} {floor:6.3f}  {verdict}")
+                  f"{move:+7.3f} {floor:6.3f} {p:6.3f}  {verdict}")
     print("  " + ", ".join(f"{v}: {c}" for v, c in verdicts.most_common()))
 
     print("\nRQ2 -- ring minus star, before and after")
