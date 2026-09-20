@@ -42,6 +42,8 @@ def collect(roots: list[str], game: str) -> dict:
             if "history" not in rec or rec["config"]["game"] != game:
                 continue
             cfg = rec["config"]
+            # Deliberately without the filter/commfix tags: this script's whole
+            # job is to line the two prompt generations up cell by cell.
             cell = cell_label(scenario_of(rec), cfg["condition"])
             model = cfg["model"]["model_id"].split("/")[-1]
             topo = rec["topology"].get("type", "star")

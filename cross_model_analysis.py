@@ -180,8 +180,15 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
             "topology": summary["topology"],
             "condition": summary["condition"],
             "scenario": summary["scenario"],
-            "cell": cell_label(summary["scenario"], summary["condition"]),
+            "cell": cell_label(summary["scenario"], summary["condition"],
+                               cfg.get("message_filter", "none"),
+                               bool(cfg.get("topology_aware_comm_prompt", False))),
             "framing_type": cfg.get("framing_type", ""),
+            # In the master table too, so a mixed cell is visible after the
+            # fact instead of only at grouping time.
+            "message_filter": cfg.get("message_filter", "none"),
+            "comm_prompt": ("topology" if cfg.get("topology_aware_comm_prompt")
+                            else "legacy_star"),
             "n_rounds": summary["n_rounds"],
             "n_runs_config": cfg.get("n_runs", -1),
             "run_id": summary["run_id"],
@@ -191,8 +198,19 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def cell_label(scenario: str, condition: str) -> str:
+def cell_label(scenario: str, condition: str,
+               message_filter: str = "none", comm_fix: bool = False) -> str:
     """Unique label for one experimental cell.
+
+    A cell is an experimental condition, so anything that changes the
+    condition has to be in the label. Two knobs used to be invisible here,
+    and both are silent failures rather than errors: a filtered run and its
+    unfiltered twin both record `scenario="framing_competitive"`, and a run
+    with the corrected communication prompt records the same scenario as the
+    run with the star sentence. Passing both trees to `--roots` averaged
+    them into one cell -- 15 runs of Qwen2.5 `framing_competitive` came out
+    as 0.23, a value none of the three arms has. Separate directories are
+    not protection: they only hold as long as nobody types a parent path.
 
     The three `framing_*_context` scenarios were run under BOTH conditions:
     the frame in the system prompt with the channel closed (`no_comm`), and
@@ -202,9 +220,13 @@ def cell_label(scenario: str, condition: str) -> str:
     alone silently did exactly that. Every other scenario has exactly one
     condition, so its label is just the scenario name.
     """
-    if scenario.endswith("_context"):
-        return f"{scenario}[{condition}]"
-    return scenario
+    label = f"{scenario}[{condition}]" if scenario.endswith("_context") else scenario
+    tags = []
+    if message_filter and message_filter != "none":
+        tags.append(message_filter.split("_")[0])   # F3_relative_gain -> F3
+    if comm_fix:
+        tags.append("commfix")
+    return f"{label}+{'+'.join(tags)}" if tags else label
 
 
 def aggregate(master: pd.DataFrame) -> pd.DataFrame:
@@ -257,9 +279,12 @@ def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
                 "no_comm_mean": nc_mean,
                 "no_comm_ci_lo": nc_lo,
                 "no_comm_ci_hi": nc_hi,
-                "cheap_talk_mean": ct_mean,
-                "cheap_talk_ci_lo": ct_lo,
-                "cheap_talk_ci_hi": ct_hi,
+                # "open arm", not "cheap talk": for a framing_*_context[no_comm]
+                # row this holds the CLOSED-channel arm measured against the
+                # same anchor. The delta was always right; the name was not.
+                "open_arm_mean": ct_mean,
+                "open_arm_ci_lo": ct_lo,
+                "open_arm_ci_hi": ct_hi,
                 "delta": ct_mean - nc_mean,
                 "n_no_comm": len(no_comm),
                 "n_cheap_talk": len(ct_vals),
@@ -399,7 +424,7 @@ def main():
         for _, r in baseline_ct.sort_values(
                 ["model_id", "topology", "game"]).iterrows():
             print(f"  {r['model_id']:24s} {r['topology']:6s} {r['game']:3s}: "
-                  f"no_comm={r['no_comm_mean']:.1%}  → cheap_talk={r['cheap_talk_mean']:.1%}  "
+                  f"no_comm={r['no_comm_mean']:.1%}  → open arm={r['open_arm_mean']:.1%}  "
                   f"(Δ = {r['delta']:+.1%})")
 
 

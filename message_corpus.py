@@ -51,7 +51,9 @@ def build(roots: list[str]) -> pd.DataFrame:
             continue
         summary = summarise_run(data)
         model = normalise_model_id(cfg.get("model", {}).get("model_id", "unknown"))
-        cell = cell_label(summary["scenario"], summary["condition"])
+        cell = cell_label(summary["scenario"], summary["condition"],
+                          cfg.get("message_filter", "none"),
+                          bool(cfg.get("topology_aware_comm_prompt", False)))
         topology = summary["topology"]
         coop = GAMES[game_name].cooperative_action
         n_runs += 1
@@ -62,6 +64,12 @@ def build(roots: list[str]) -> pd.DataFrame:
 
         for idx, rnd in enumerate(history):
             messages = rnd.get("messages", {}) or {}
+            # What the agent wrote, before the filter had its say. Equal to
+            # `messages` in every unfiltered run; in a filtered one a blocked
+            # message is delivered as "" and survives only here, which is
+            # what "does the hostile register migrate?" has to read.
+            composed = rnd.get("messages_composed", {}) or {}
+            blocked = rnd.get("messages_blocked", {}) or {}
             seen_by = rnd.get("messages_seen_by", {}) or {}
             actions = rnd.get("actions", {}) or {}
             invalid = rnd.get("invalid", {}) or {}
@@ -89,6 +97,10 @@ def build(roots: list[str]) -> pd.DataFrame:
                     "is_hub": bool(topology == "star" and str(agent) == "0"),
                     "n_recipients": n_recipients,
                     "message": text if isinstance(text, str) else "",
+                    "composed": (composed.get(agent) if isinstance(composed.get(agent), str)
+                                 else (text if isinstance(text, str) else "")),
+                    "was_blocked": bool(blocked.get(agent, False)),
+                    "message_filter": cfg.get("message_filter", "none"),
                     "own_action": own,
                     "own_is_coop": (own == coop) if own is not None else None,
                     "own_invalid": bool(invalid.get(agent, False)),

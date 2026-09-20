@@ -98,15 +98,16 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 
 ## Notebooks
 
-| notebook | what it runs |
-|---|---|
-| `kaggle_runner.ipynb` | the main campaigns (star grid, cycle grid, context framings) |
-| `kaggle_judge.ipynb` | the deception judge over the PD corpus |
-| `kaggle_rq4_f1.ipynb` | the RQ4 broad-filter cell, five models in one session |
-| `kaggle_commfix_ablation.ipynb` | the corrected-prompt ablation (see below) |
+| notebook | what it runs | calls |
+|---|---|---|
+| `kaggle_runner.ipynb` | the main campaigns (star grid, cycle grid, context framings) | `campaign.py` |
+| `kaggle_rq4_f1.ipynb` | the RQ4 broad-filter cell, five models in one session | `campaign.py` |
+| `kaggle_commfix_ablation.ipynb` | the corrected-prompt ablation (see below) | `campaign.py` |
+| `kaggle_clique.ipynb` | the clique topology, third point of RQ2 | `campaign.py` |
+| `kaggle_judge.ipynb` | the deception judge over the PD corpus | `llm_judge.py` |
 
-All four call `campaign.py`, which prints its plan and refuses to start when the
-plan does not match what was asked. Kaggle executes the cells in *your* workspace,
+The four campaign notebooks go through `campaign.py`, which prints its plan and
+refuses to start when the plan does not match what was asked. Kaggle executes the cells in *your* workspace,
 not the ones in this repo: after a notebook changes here, re-import it.
 
 ## Known limitation, being closed

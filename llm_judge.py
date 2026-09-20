@@ -202,7 +202,9 @@ def collect_messages(roots: list[str], agents: str = "all",
         if games and game_name not in games:
             continue
         summary = summarise_run(data)
-        cell = cell_label(summary["scenario"], summary["condition"])
+        cell = cell_label(summary["scenario"], summary["condition"],
+                          cfg.get("message_filter", "none"),
+                          bool(cfg.get("topology_aware_comm_prompt", False)))
         if skip_canned and cell in CANNED_CELLS:
             continue
         model_id = normalise_model_id(cfg.get("model", {}).get("model_id", "unknown"))

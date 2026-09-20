@@ -26,10 +26,10 @@ import glob
 import json
 import os
 import shlex
-import shutil
 import subprocess
 import sys
 import time
+import zipfile
 from collections import Counter
 
 
@@ -184,7 +184,10 @@ def verify(result_dir: str, expected: int, topology: str,
         try:
             with open(f, encoding="utf-8") as fh:
                 rec = json.load(fh)
-            topologies[rec["topology"]["type"]] += 1
+            # Campaign 1 predates the topology layer and records no "type".
+            # Reading that as unreadable marked 80 of the 140 star files
+            # corrupt; "star" is the same default analysis.summarise_run uses.
+            topologies[rec["topology"].get("type", "star")] += 1
             folder = os.path.relpath(f, result_dir).split(os.sep)[0]
             per_scenario[folder] += 1
             recorded = rec["config"].get("scenario", "")
@@ -193,20 +196,28 @@ def verify(result_dir: str, expected: int, topology: str,
         except Exception:
             unreadable.append(f)
 
-    unexpected = sorted(set(per_scenario) - set(scenarios)) if scenarios else []
-    missing = sorted(set(scenarios) - set(per_scenario)) if scenarios else []
+    # Scenarios already in the directory that this call did not ask for are
+    # NOT an error: --scenarios exists precisely so a killed session can be
+    # resumed into the same tree. Judge only what was requested, and report
+    # the rest. (Before 2026-09-20 they failed the run, so a successful
+    # resume returned exit 3 and its zip was never written.)
+    requested = set(scenarios) if scenarios else set(per_scenario)
+    pre_existing = sorted(set(per_scenario) - requested)
+    missing = sorted(requested - set(per_scenario))
+    found = sum(per_scenario[s] for s in requested)
+    mislabelled = [m for m in mislabelled
+                   if any(f"sits in '{s}'" in m for s in requested)] if scenarios else mislabelled
 
-    report = {"found": len(files), "expected": expected,
+    report = {"found": found, "expected": expected, "found_all_scenarios": len(files),
               "per_scenario": dict(per_scenario), "topologies": dict(topologies),
               "unreadable": unreadable, "mislabelled": mislabelled,
-              "unexpected_scenarios": unexpected, "missing_scenarios": missing}
+              "pre_existing_scenarios": pre_existing, "missing_scenarios": missing}
     ok = (bool(files)
           and not unreadable
           and not mislabelled
-          and not unexpected
           and not missing
           and set(topologies) == {topology}
-          and len(files) == expected)
+          and found == expected)
     return ok, report
 
 
@@ -291,10 +302,10 @@ def main() -> int:
               f"{report['unreadable'][:3]}")
     if report["missing_scenarios"]:
         print(f"[FAIL] no runs at all for: {report['missing_scenarios']}")
-    if report["unexpected_scenarios"]:
-        print(f"[FAIL] runs for scenarios that were not requested: "
-              f"{report['unexpected_scenarios']} -- is this directory reused "
-              f"from an earlier session?")
+    if report["pre_existing_scenarios"]:
+        print(f"[note] the directory also holds earlier scenarios, not judged "
+              f"here: {report['pre_existing_scenarios']} "
+              f"({report['found_all_scenarios']} files in total)")
     if report["mislabelled"]:
         print(f"[FAIL] {len(report['mislabelled'])} run(s) record a scenario "
               f"that disagrees with their directory: {report['mislabelled'][:3]}")
@@ -303,8 +314,19 @@ def main() -> int:
               "Check the scenario counts above.")
         return 3
 
+    # Not shutil.make_archive: it would zip result_dir whole, which already
+    # holds the per-scenario zips written during the sweep -- and, if the
+    # archive lands inside that tree, a partial copy of itself. The downloads
+    # were about three times the size they needed to be.
     zip_base = os.path.normpath(p["zip_base"])
-    shutil.make_archive(zip_base, "zip", p["result_dir"])
+    with zipfile.ZipFile(zip_base + ".zip", "w", zipfile.ZIP_DEFLATED) as z:
+        for dirpath, dirnames, filenames in os.walk(p["result_dir"]):
+            dirnames[:] = [d for d in dirnames if d != "zips"]
+            for name in filenames:
+                if name.endswith(".zip"):
+                    continue
+                full = os.path.join(dirpath, name)
+                z.write(full, os.path.relpath(full, p["result_dir"]))
     size_mb = os.path.getsize(zip_base + ".zip") / 1e6
     print(f"\n[OK] download this: {zip_base}.zip  ({size_mb:.1f} MB)")
     print(f"[OK] wall time {elapsed/3600:.2f} h -- note it in TRACK_RECORD.md "

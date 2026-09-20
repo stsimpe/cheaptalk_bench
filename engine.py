@@ -13,9 +13,15 @@ Payoff semantics:
   plays 3 pairwise instances of the game per round, each leaf plays 1.
 
 Invalid actions (model output that doesn't canonicalise to a valid label) are
-recorded but excluded from payoff computation that round for the offending
-agent (the agent gets 0 for that round and the flag is stored). This matches
-Sabani's invalid-rate metric.
+recorded and the flag is stored. The payoff rule is blunter than "the
+offending agent gets 0": _compute_payoffs skips the whole EDGE, so the
+valid neighbour loses that edge's payoff too. Cooperation rates are
+unaffected (invalid decisions never enter their denominator), but
+hub_total_payoff and leaf_avg_payoff are, and a star hub -- three edges --
+is hit harder than a leaf. gemma-2-2b, with the highest invalid rate, is the
+most exposed. The rule is kept as it is because changing it now would break
+comparability with every run already recorded; no result in the thesis rests
+on those two payoff columns.
 """
 from __future__ import annotations
 

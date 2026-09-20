@@ -42,37 +42,6 @@ from games import GAMES
 
 # ---------- Loading ----------
 
-def load_runs(results_dir: str) -> list[dict]:
-    """Return list of all run records, each tagged with file path."""
-    runs: list[dict] = []
-    
-    # Baseline experiments
-    for condition_dir in ("no_comm", "cheap_talk"):
-        pattern = os.path.join(results_dir, condition_dir, "*.json")
-        for path in sorted(glob.glob(pattern)):
-            with open(path) as f:
-                rec = json.load(f)
-            rec["_path"] = path
-            rec["_experiment_group"] = "baseline"
-            runs.append(rec)
-    
-    # Message ablation experiments
-    ablation_root = os.path.join(results_dir, "message_ablation")
-    if os.path.exists(ablation_root):
-        for policy in ("meaningful", "irrelevant", "silence"):
-            pattern = os.path.join(ablation_root, policy, "*.json")
-            for path in sorted(glob.glob(pattern)):
-                with open(path) as f:
-                    rec = json.load(f)
-                rec["_path"] = path
-                rec["_experiment_group"] = f"ablation_{policy}"
-                runs.append(rec)
-    
-    return runs
-
-
-# ---------- Scenario identification ----------
-
 def scenario_of(record: dict) -> str:
     """The analysis-level scenario label for one run record.
 
@@ -364,94 +333,9 @@ def message_content_analysis(msgs_coop: list[str], msgs_defect: list[str], top_k
 
 # ---------- Main ----------
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--results-dir", default="results")
-    args = ap.parse_args()
-
-    runs = load_runs(args.results_dir)
-    if not runs:
-        print(f"No runs found under {args.results_dir}/{{no_comm,cheap_talk}}/")
-        return
-
-    # Per-run summaries
-    summaries = [summarise_run(r) for r in runs]
-
-    # Group by (topology, condition, game, model) and aggregate — the topology
-    # key keeps star and cycle/clique/line runs from blending in one row.
-    groups: dict[tuple, list[dict]] = defaultdict(list)
-    for s in summaries:
-        groups[(s["topology"], s["condition"], s["game"], s["model_id"])].append(s)
-
-    rows = []
-    for (topo, cond, game, model), summs in sorted(groups.items()):
-        agg = aggregate(summs)
-        row = {"topology": topo, "condition": cond, "game": game,
-               "model_id": model, **agg}
-        rows.append(row)
-
-    df = pd.DataFrame(rows)
-    pd.set_option("display.float_format", lambda x: f"{x:0.3f}")
-
-    # ---------- RQ1 main table: cheap talk effect by game ----------
-    print("\n=== RQ1: Direction × Game structure ===")
-    print("(Did cheap talk push toward cooperation, and does it depend on PD vs SH?)\n")
-    cols_rq1 = [
-        "topology", "condition", "game", "model_id", "n_runs",
-        "coop_rate_overall_mean", "coop_rate_overall_sd",
-        "full_coop_rate_mean",
-    ]
-    print(df[cols_rq1].to_string(index=False))
-
-    # ---------- RQ2 main table: hub vs leaf asymmetry ----------
-    print("\n=== RQ2: Topology — hub vs leaf asymmetry ===")
-    print("(Does the hub behave differently from leaves? Does cheap talk amplify it?)\n")
-    cols_rq2 = [
-        "condition", "game", "model_id",
-        "coop_rate_hub_mean", "coop_rate_leaf_mean", "hub_minus_leaf_coop_mean",
-        "hub_total_payoff_mean", "leaf_avg_payoff_mean",
-        "hub_leadership_rate_mean", "hub_exploitation_rate_mean",
-    ]
-    print(df[cols_rq2].to_string(index=False))
-
-    # ---------- Cheap-talk Δ (RQ1, headline number) ----------
-    print("\n=== Headline: cheap talk Δ in cooperation ===")
-    for game in ("pd", "sh"):
-        no_comm = df[(df["condition"] == "no_comm") & (df["game"] == game)]
-        ct = df[(df["condition"] == "cheap_talk") & (df["game"] == game)]
-        if not no_comm.empty and not ct.empty:
-            delta = ct["coop_rate_overall_mean"].iloc[0] - no_comm["coop_rate_overall_mean"].iloc[0]
-            print(f"  {game.upper()}: no_comm={no_comm['coop_rate_overall_mean'].iloc[0]:.1%} "
-                  f"→ cheap_talk={ct['coop_rate_overall_mean'].iloc[0]:.1%}  "
-                  f"(Δ = {delta:+.1%})")
-
-    # ---------- RQ1 message content (cheap talk only) ----------
-    print("\n=== RQ1: Message content analysis (cheap talk runs only) ===")
-    for game in ("pd", "sh"):
-        ct_summs = [s for s in summaries
-                    if s["condition"] == "cheap_talk" and s["game"] == game]
-        if not ct_summs:
-            continue
-        all_coop_msgs = [m for s in ct_summs for m in s["_msgs_when_coop"]]
-        all_def_msgs = [m for s in ct_summs for m in s["_msgs_when_defect"]]
-        if not all_coop_msgs and not all_def_msgs:
-            continue
-        analysis = message_content_analysis(all_coop_msgs, all_def_msgs)
-        print(f"\n  {game.upper()}: {analysis['n_coop_msgs']} coop msgs, "
-              f"{analysis['n_defect_msgs']} defect msgs")
-        print("  Top words preceding cooperation:")
-        for w in analysis["top_coop_words"][:8]:
-            lift = w["lift"]
-            print(f"    {w['word']:15s} count={w['count_in_coop']:3d}  "
-                  f"P(w|coop)={w['freq_in_coop']:.3f}  "
-                  f"P(w|defect)={w['freq_in_defect']:.3f}  "
-                  f"lift={lift}")
-
-    # ---------- Save aggregated CSV ----------
-    out_path = os.path.join(args.results_dir, "aggregated_metrics.csv")
-    df.to_csv(out_path, index=False)
-    print(f"\n→ Aggregated metrics saved to {out_path}")
-
-
-if __name__ == "__main__":
-    main()
+# The single-model CLI that used to live here was removed on 2026-09-20.
+# Its load_runs() globbed results/{no_comm,cheap_talk}/*.json, a layout the
+# runner stopped writing in July (it writes <out>/<scenario>/<condition>/),
+# so `python analysis.py --results-dir ...` found zero runs in every current
+# tree. This module is a library now: cross_model_analysis.py is the entry
+# point, and seven modules import summarise_run/scenario_of from here.
