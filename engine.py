@@ -183,8 +183,40 @@ class GameEngine:
             "config": self.cfg.to_dict(),
             "topology": self.topology.to_dict(),
             "game": self.game.name,
+            "environment": _environment(),
             "history": history,
         }
+
+
+def _environment() -> dict:
+    """What produced this run, beyond the configuration.
+
+    Added 2026-09-20. Re-running an *unchanged* cell 26 days later moved it
+    from 0.109 to 0.241 with no overlap between the two sets of runs, which
+    sampling at n=5 does not comfortably explain. The records held nothing
+    that could separate sampling from a changed library, a re-quantised
+    model or a new Kaggle image, so from now on they do. Best-effort: a
+    missing version must never fail a run.
+    """
+    import datetime
+    import platform
+
+    env = {
+        "timestamp": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "python": platform.python_version(),
+    }
+    for name in ("torch", "transformers", "bitsandbytes", "accelerate"):
+        try:
+            env[name] = __import__(name).__version__
+        except Exception:
+            pass
+    try:
+        import torch
+        if torch.cuda.is_available():
+            env["gpu"] = torch.cuda.get_device_name(0)
+    except Exception:
+        pass
+    return env
 
 
 def make_engine(cfg: ExperimentConfig) -> GameEngine:
