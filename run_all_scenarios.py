@@ -82,6 +82,11 @@ def parse_args() -> argparse.Namespace:
                         "carried since the first campaign. Off reproduces every "
                         "earlier run byte-for-byte; on is the corrected prompt "
                         "(2026-09 ablation). Runs land in a separate tree.")
+    p.add_argument("--allow-legacy-star-prompt", action="store_true",
+                   help="Permit a non-star topology WITHOUT the corrected "
+                        "prompt, i.e. with the star routing sentence. Only for "
+                        "reproducing the pre-2026-09-20 ring grid byte-for-byte; "
+                        "without it such a run is refused.")
     p.add_argument("--no-probe", action="store_true")
     p.add_argument("--quick", action="store_true")
     p.add_argument("--games", nargs="+", default=["pd", "sh"],
@@ -133,6 +138,15 @@ def zip_scenario(scenario_dir: str, zip_path: str, mirror: str | None) -> None:
 
 def main():
     args = parse_args()
+    # The prompt bug of 2026-09-20 was this exact combination running silently:
+    # a non-star topology with the legacy routing sentence. It is now refused
+    # unless asked for by name.
+    if (args.topology != "star" and not args.topology_aware_comm_prompt
+            and not args.allow_legacy_star_prompt):
+        raise SystemExit(
+            f"--topology {args.topology} without --topology-aware-comm-prompt would "
+            f"tell every agent it sits in a star. Add --topology-aware-comm-prompt, "
+            f"or --allow-legacy-star-prompt to reproduce the old ring grid on purpose.")
     model_id = args.model_id or DEFAULT_MODELS[args.provider]
 
     # Keep non-star data in its own tree so star aggregations never mix in

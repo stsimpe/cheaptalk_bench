@@ -78,11 +78,9 @@ class GameEngine:
         return agents
 
     def _messages_seen_by(self, messages: dict[int, str]) -> dict[int, dict[int, str]]:
-        """For each agent, which messages are visible to it?
-
-        Rules (star topology):
-          - Hub sees messages from all its neighbors (all leaves).
-          - Leaf sees message from its only neighbor (the hub).
+        """For each agent, which messages are visible to it: exactly those of
+        its neighbours in the topology, on every topology. (On the star: the
+        hub sees every leaf, a leaf sees only the hub.)
         """
         seen: dict[int, dict[int, str]] = {i: {} for i in range(self.topology.n_agents)}
         for sender, msg in messages.items():

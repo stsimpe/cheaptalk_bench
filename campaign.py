@@ -289,6 +289,12 @@ def main() -> int:
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
 
+    if args.topology != "star" and not args.topology_aware_comm_prompt:
+        raise SystemExit(
+            f"--topology {args.topology} needs --topology-aware-comm-prompt: without it "
+            f"the cheap-talk prompt describes a star (the 2026-09-20 bug). campaign.py "
+            f"no longer runs that combination; reproduce the old grid with "
+            f"run_all_scenarios.py --allow-legacy-star-prompt.")
     p = plan(args.model, args.session, args.topology, args.n_runs,
              args.n_rounds, args.out_root, args.max_new_tokens, args.scenarios,
              games=args.games, message_filter=args.message_filter,
