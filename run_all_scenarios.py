@@ -163,7 +163,7 @@ def main():
 
     print(f"=== Model: {args.provider}:{model_id} ===")
     print(f"=== Scenarios: {[s[0] for s in selected]} ===")
-    print(f"=== Per scenario: {n_runs} runs x {n_rounds} rounds, games=[pd,sh] ===")
+    print(f"=== Per scenario: {n_runs} runs x {n_rounds} rounds, games={args.games} ===")
     print(f"=== Output: {args.out_dir_base} ===")
     print(f"=== Per-scenario zips: {zips_dir} ===\n")
 
