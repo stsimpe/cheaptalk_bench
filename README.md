@@ -111,9 +111,11 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 rest is read. gemma-2-2b is the one model whose ring cooperates less than its
 star (0.18 against 0.67, no communication), and that star was measured in May,
 before Kaggle's image moved to transformers 5.x on 2026-07-28, while the ring
-was measured after. The triad measures all three topologies in one session on
-one library, which makes it the only part of the corpus where the topology
-contrast carries no version or time gap.
+was measured after. Step 1 re-measures that star on the current image, and its
+ring comes from the ablation run of the same month; every September record
+carries its library versions, so the two sessions can be checked for a match
+rather than assumed to have one. That makes gemma-2-2b the one model whose
+star-ring contrast carries no version gap.
 
 The four campaign notebooks go through `campaign.py`, which prints its plan and
 refuses to start when the plan does not match what was asked. Kaggle executes the cells in *your* workspace,
