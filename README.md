@@ -103,7 +103,7 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 | `kaggle_runner.ipynb` | the main campaigns (star grid, cycle grid, context framings) — done | `campaign.py` |
 | `kaggle_rq4_f1.ipynb` | the RQ4 broad-filter cell, five models in one session — done | `campaign.py` |
 | `kaggle_commfix_ablation.ipynb` | the corrected-prompt ablation — done for four models; stops on purpose if re-run | `campaign.py` |
-| `kaggle_g2b_triad.ipynb` | **step 1**: gemma-2-2b on star, ring and clique in one session | `campaign.py` |
+| `kaggle_g2b_triad.ipynb` | **step 1**: gemma-2-2b re-measured on the star, plus its clique (~4.6 h); its ring comes from the ablation run | `campaign.py` |
 | `kaggle_clique.ipynb` | **steps 2–6**: the clique for the other four models | `campaign.py` |
 | `kaggle_judge.ipynb` | the deception judge over the PD corpus — done | `llm_judge.py` |
 
