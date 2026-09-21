@@ -27,7 +27,6 @@ the note at the foot of the file says why.
 """
 from __future__ import annotations
 
-from collections import defaultdict
 from statistics import mean
 
 from games import GAMES

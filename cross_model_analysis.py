@@ -34,7 +34,6 @@ import glob
 import json
 import os
 import sys
-from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -302,6 +301,11 @@ def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
     for (model, topology, game), sub in master.groupby(["model_id", "topology", "game"]):
         anchor_pool = sub[sub["cell"] == "no_comm"]
         if anchor_pool["coop_rate_overall"].dropna().empty:
+            # Not an error -- a campaign split over sessions has open cells
+            # before its baseline session lands -- but never silent: a delta
+            # table missing half an experiment looks complete otherwise.
+            print(f"[note] no no_comm anchor for {model} / {topology} / {game}: "
+                  f"{sub['cell'].nunique()} cell(s) left out of the deltas")
             continue
         for cell, sc_sub in sub.groupby("cell"):
             if cell == "no_comm":

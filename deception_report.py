@@ -73,11 +73,11 @@ def main():
           & (~K["own_invalid"].astype(bool))]
 
     print(f"=== {args.game.upper()} -- deception, judge vs keyword ===\n")
-    print(f"{'cell':42s} {'judge':>17s} {'keyword':>17s}")
     tagged = sorted({c for c in J["cell"].unique() if "+" in c})
     if tagged:
         print(f"[note] {len(tagged)} tagged cell(s) are not validated and are "
               f"excluded: {', '.join(tagged[:6])}\n")
+    print(f"{'cell':42s} {'judge':>17s} {'keyword':>17s}")
     for cell in VALIDATED + list(HELD_BACK):
         j = J[(J["cell"] == cell) & J["is_coop_signal"]]
         k = K[(K["cell"] == cell) & K["F2_coop_signal"]]
