@@ -100,11 +100,20 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 
 | notebook | what it runs | calls |
 |---|---|---|
-| `kaggle_runner.ipynb` | the main campaigns (star grid, cycle grid, context framings) | `campaign.py` |
-| `kaggle_rq4_f1.ipynb` | the RQ4 broad-filter cell, five models in one session | `campaign.py` |
-| `kaggle_commfix_ablation.ipynb` | the corrected-prompt ablation (see below) | `campaign.py` |
-| `kaggle_clique.ipynb` | the clique topology, third point of RQ2 | `campaign.py` |
-| `kaggle_judge.ipynb` | the deception judge over the PD corpus | `llm_judge.py` |
+| `kaggle_runner.ipynb` | the main campaigns (star grid, cycle grid, context framings) — done | `campaign.py` |
+| `kaggle_rq4_f1.ipynb` | the RQ4 broad-filter cell, five models in one session — done | `campaign.py` |
+| `kaggle_commfix_ablation.ipynb` | the corrected-prompt ablation — done for four models; stops on purpose if re-run | `campaign.py` |
+| `kaggle_g2b_triad.ipynb` | **step 1**: gemma-2-2b on star, ring and clique in one session | `campaign.py` |
+| `kaggle_clique.ipynb` | **steps 2–6**: the clique for the other four models | `campaign.py` |
+| `kaggle_judge.ipynb` | the deception judge over the PD corpus — done | `llm_judge.py` |
+
+**Run order for what is left.** Step 1 comes first because it decides how the
+rest is read. gemma-2-2b is the one model whose ring cooperates less than its
+star (0.18 against 0.67, no communication), and that star was measured in May,
+before Kaggle's image moved to transformers 5.x on 2026-07-28, while the ring
+was measured after. The triad measures all three topologies in one session on
+one library, which makes it the only part of the corpus where the topology
+contrast carries no version or time gap.
 
 The four campaign notebooks go through `campaign.py`, which prints its plan and
 refuses to start when the plan does not match what was asked. Kaggle executes the cells in *your* workspace,
