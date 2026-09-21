@@ -109,7 +109,11 @@ WHERE THE FRAME LIVES and nothing else. That is the dissociation.
 ## Summary statistics for the prose
 
 - PD, all 30 (model x topology x frame): opening the channel on top of a
-  system-prompt frame raises cooperation in **27/30** cases (the other 3 are flat at 1.00; 0 lower) -- corrected 2026-09-20, this line read 28/30.
+  system-prompt frame raises cooperation in **28/30** cases (the other 2 are flat at
+  1.00 -- Qwen2.5 star team and gemma-2-9b star team; 0 lower). This line was
+  briefly "corrected" to 27/30 on 2026-09-20 to match TRACK_RECORD; the CSVs say
+  28, and the 27 came from an ad-hoc `d > 0.005` threshold that dropped
+  gemma-2-2b cycle team at +0.0028. Restored 2026-09-21.
 - `both` lands in [0.79, 1.00] in all 30 -- never below 0.79.
 - talk adds range [+0.00, +0.99].
 - competitive frame in the MESSAGES, PD, all 10 model-topology pairs:
