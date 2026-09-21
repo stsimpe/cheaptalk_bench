@@ -91,12 +91,23 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--scenarios", nargs="+", default=None,
                    choices=[s[0] for s in SCENARIOS])
     p.add_argument("--skip-baseline", action="store_true")
+    p.add_argument("--conditions", nargs="+", default=None,
+                   choices=["no_comm", "cheap_talk"],
+                   help="Run only these arms of each scenario. Default: every "
+                        "arm, as every campaign so far. Used to add replicates "
+                        "to a closed-channel anchor without re-running the open "
+                        "arm; a restricted run lands in its own tree.")
     p.add_argument("--zip-after-each", action="store_true", default=True,
                    help="Write a per-scenario zip after each scenario finishes.")
     p.add_argument("--zip-mirror", default=None,
                    help="Extra location to ALSO copy zips to (e.g. /kaggle/working). "
                         "Helps when out-dir-base is somewhere ephemeral.")
     return p.parse_args()
+
+
+def conditions_tag(conditions: list[str]) -> str:
+    """Directory/zip suffix for a run restricted to some arms, e.g. 'nocomm'."""
+    return "_".join(c.replace("_", "") for c in sorted(conditions))
 
 
 def write_progress(progress_path: str, payload: dict) -> None:
@@ -137,6 +148,11 @@ def main():
     # generation, and mixing the two inside one cell would be invisible later.
     if args.topology_aware_comm_prompt:
         args.out_dir_base = f"{args.out_dir_base}_commfix"
+    # Extra replicates of one arm are the same cell, but a separate tree keeps
+    # the session that produced them verifiable on its own, and keeps its zip
+    # from overwriting the full session's.
+    if args.conditions and set(args.conditions) != {"no_comm", "cheap_talk"}:
+        args.out_dir_base = f"{args.out_dir_base}_{conditions_tag(args.conditions)}"
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -155,6 +171,13 @@ def main():
         selected = [s for s in SCENARIOS if s[0] in args.scenarios]
     if args.skip_baseline:
         selected = [s for s in selected if s[0] != "baseline"]
+    if args.conditions:
+        selected = [(label, [c for c in conds if c in args.conditions], *rest)
+                    for label, conds, *rest in selected]
+        dropped = [s[0] for s in selected if not s[1]]
+        if dropped:
+            raise SystemExit(f"{dropped} have no {args.conditions} arm -- "
+                             f"nothing would run for them.")
 
     os.makedirs(args.out_dir_base, exist_ok=True)
     zips_dir = os.path.join(args.out_dir_base, "zips")

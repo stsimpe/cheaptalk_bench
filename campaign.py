@@ -74,9 +74,15 @@ def _conditions_per_scenario() -> dict[str, int]:
     return {label: len(conditions) for label, conditions, *_ in SCENARIOS}
 
 
-def expected_runs(scenarios: list[str], n_runs: int, n_games: int = 2) -> int:
+def expected_runs(scenarios: list[str], n_runs: int, n_games: int = 2,
+                  conditions: list[str] | None = None) -> int:
     """Every scenario is (arms x games x n_runs) run files."""
-    arms = _conditions_per_scenario()
+    if conditions:
+        from run_all_scenarios import SCENARIOS
+        arms = {label: sum(c in conditions for c in conds)
+                for label, conds, *_ in SCENARIOS}
+    else:
+        arms = _conditions_per_scenario()
     return sum(arms[s] * n_games * n_runs for s in scenarios)
 
 
@@ -84,7 +90,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
          n_rounds: int, out_root: str, max_new_tokens: int | None = None,
          only: list[str] | None = None, games: list[str] | None = None,
          message_filter: str = "none",
-         comm_fix: bool = False) -> dict:
+         comm_fix: bool = False,
+         conditions: list[str] | None = None) -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -121,6 +128,13 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         result_dir = f"{result_dir}_{message_filter}"
     if comm_fix:
         result_dir = f"{result_dir}_commfix"
+    if conditions and set(conditions) == {"no_comm", "cheap_talk"}:
+        conditions = None
+    if conditions:
+        from run_all_scenarios import conditions_tag
+        result_dir = f"{result_dir}_{conditions_tag(conditions)}"
+    if expected_runs(scenarios, n_runs, len(games), conditions) == 0:
+        raise SystemExit(f"{scenarios} have no {conditions} arm -- nothing would run.")
     zip_name = f"{short}_{topology}_session{session}"
     if message_filter != "none":
         zip_name += f"_{message_filter}"
@@ -128,14 +142,17 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         zip_name += "_commfix"
     if games != ["pd", "sh"]:
         zip_name += "_" + "".join(games)
+    if conditions:
+        zip_name += f"_{conditions_tag(conditions)}"
     return {
         "model": model, "session": session, "topology": topology,
         "scenarios": scenarios, "n_runs": n_runs, "n_rounds": n_rounds,
         "games": games, "message_filter": message_filter,
         "comm_fix": comm_fix,
+        "conditions": conditions,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
-        "expected_runs": expected_runs(scenarios, n_runs, len(games)),
+        "expected_runs": expected_runs(scenarios, n_runs, len(games), conditions),
         "zip_base": os.path.join(out_root, "..", zip_name),
     }
 
@@ -160,6 +177,8 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
         cmd += ["--message-filter", p["message_filter"]]
     if p.get("comm_fix"):
         cmd += ["--topology-aware-comm-prompt"]
+    if p.get("conditions"):
+        cmd += ["--conditions", *p["conditions"]]
     cmd += ["--scenarios", *p["scenarios"]]
     return cmd
 
@@ -262,6 +281,10 @@ def main() -> int:
                          "the topology instead of the legacy star sentence. "
                          "Output lands in its own tree; off reproduces the "
                          "1,420-run grid byte-for-byte.")
+    ap.add_argument("--conditions", nargs="+", default=None,
+                    choices=["no_comm", "cheap_talk"],
+                    help="Run only these arms, e.g. extra no_comm replicates. "
+                         "Output lands in its own tree (suffix _nocomm).")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
@@ -269,7 +292,8 @@ def main() -> int:
     p = plan(args.model, args.session, args.topology, args.n_runs,
              args.n_rounds, args.out_root, args.max_new_tokens, args.scenarios,
              games=args.games, message_filter=args.message_filter,
-             comm_fix=args.topology_aware_comm_prompt)
+             comm_fix=args.topology_aware_comm_prompt,
+             conditions=args.conditions)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)
@@ -283,6 +307,9 @@ def main() -> int:
               f"-> separate tree: {p['result_dir']}")
     if p["message_filter"] != "none":
         print(f"FILTER       : {p['message_filter']}  "
+              f"-> separate tree: {p['result_dir']}")
+    if p.get("conditions"):
+        print(f"ARMS         : only {p['conditions']}  "
               f"-> separate tree: {p['result_dir']}")
     print(f"expecting    : {p['expected_runs']} run files")
     print(f"results ->   : {p['result_dir']}")
