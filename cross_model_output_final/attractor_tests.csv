@@ -1,0 +1,26 @@
+model_id,label,a,b,p,p_holm,family
+Llama-3.1-8B-Instruct,cycle: cheap talk vs no_comm,5/5,2/5,0.16666666666666666,0.3333333333333333,RQ1
+Llama-3.1-8B-Instruct,star: cheap talk vs no_comm,5/5,1/5,0.047619047619047616,0.19047619047619047,RQ1
+Qwen2.5-7B-Instruct,cycle: cheap talk vs no_comm,5/5,0/5,0.007936507936507938,0.07142857142857144,RQ1
+Qwen2.5-7B-Instruct,star: cheap talk vs no_comm,5/5,0/5,0.007936507936507938,0.07142857142857144,RQ1
+Qwen3-4B,cycle: cheap talk vs no_comm,5/5,0/5,0.007936507936507938,0.07142857142857144,RQ1
+Qwen3-4B,star: cheap talk vs no_comm,5/5,0/5,0.007936507936507938,0.07142857142857144,RQ1
+gemma-2-2b-it,cycle: cheap talk vs no_comm,5/5,0/5,0.007936507936507938,0.07142857142857144,RQ1
+gemma-2-2b-it,star: cheap talk vs no_comm,5/5,3/5,0.4444444444444445,0.4444444444444445,RQ1
+gemma-2-9b-it,cycle: cheap talk vs no_comm,5/5,1/5,0.047619047619047616,0.19047619047619047,RQ1
+gemma-2-9b-it,star: cheap talk vs no_comm,10/10,0/10,1.082508822446903e-05,0.0001082508822446903,RQ1
+Llama-3.1-8B-Instruct,no_comm: star vs ring,1/5,2/5,1.0,1.0,RQ2
+Llama-3.1-8B-Instruct,silence: star vs ring,0/5,3/5,0.16666666666666666,1.0,RQ2
+Llama-3.1-8B-Instruct,no_sense: star vs ring,1/5,3/5,0.5238095238095238,1.0,RQ2
+Qwen2.5-7B-Instruct,no_comm: star vs ring,0/5,0/5,1.0,1.0,RQ2
+Qwen2.5-7B-Instruct,silence: star vs ring,1/5,3/5,0.5238095238095238,1.0,RQ2
+Qwen2.5-7B-Instruct,no_sense: star vs ring,0/5,0/5,1.0,1.0,RQ2
+Qwen3-4B,no_comm: star vs ring,0/5,0/5,1.0,1.0,RQ2
+Qwen3-4B,silence: star vs ring,3/5,4/5,1.0,1.0,RQ2
+Qwen3-4B,no_sense: star vs ring,5/5,5/5,1.0,1.0,RQ2
+gemma-2-2b-it,no_comm: star vs ring,3/5,0/5,0.16666666666666666,1.0,RQ2
+gemma-2-2b-it,silence: star vs ring,0/5,0/5,1.0,1.0,RQ2
+gemma-2-2b-it,no_sense: star vs ring,0/5,0/5,1.0,1.0,RQ2
+gemma-2-9b-it,no_comm: star vs ring,0/10,1/5,0.3333333333333333,1.0,RQ2
+gemma-2-9b-it,silence: star vs ring,1/5,2/5,1.0,1.0,RQ2
+gemma-2-9b-it,no_sense: star vs ring,0/5,0/5,1.0,1.0,RQ2
