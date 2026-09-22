@@ -48,6 +48,12 @@ def _is_tpd_error(message: str) -> bool:
 
 
 class LLMClient(ABC):
+    # Metadata of the most recent generate() call, read by the agent after
+    # each call and stored in the run record: prompt/completion tokens and why
+    # generation stopped ("stop" or "length"). Bookkeeping only -- it never
+    # influences what is sent or how it is sampled. None when unknown.
+    last_meta: dict | None = None
+
     @abstractmethod
     def generate(self, system: str, user: str) -> str:
         ...
@@ -87,6 +93,12 @@ class OpenAICompatibleClient(LLMClient):
                 if resp.usage is not None:
                     self.session_tokens += int(getattr(resp.usage, "total_tokens", 0) or 0)
                 self.session_calls += 1
+                usage = resp.usage
+                self.last_meta = {
+                    "prompt_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
+                    "completion_tokens": getattr(usage, "completion_tokens", None) if usage else None,
+                    "finish_reason": resp.choices[0].finish_reason,
+                }
                 if self.cfg.request_delay_s > 0:
                     time.sleep(self.cfg.request_delay_s)
                 return resp.choices[0].message.content or ""
@@ -286,6 +298,24 @@ class LocalTransformersClient(LLMClient):
         completion_tokens = generated_ids.shape[0]
         self.session_tokens += prompt_tokens + completion_tokens
         self.session_calls += 1
+        # "length" = the max_new_tokens cap ended the output before the model
+        # did; such an output may have lost its JSON. Read after the fact from
+        # the tokens already generated -- nothing about generation changes.
+        try:
+            eos = self.model.generation_config.eos_token_id
+            eos_ids = set(eos if isinstance(eos, (list, tuple)) else [eos])
+            eos_ids.add(self.tokenizer.eos_token_id)
+            ended_on_eos = completion_tokens > 0 and int(generated_ids[-1]) in eos_ids
+            self.last_meta = {
+                "prompt_tokens": int(prompt_tokens),
+                "completion_tokens": int(completion_tokens),
+                "finish_reason": "stop" if ended_on_eos or completion_tokens < self.cfg.max_tokens
+                                 else "length",
+            }
+        except Exception:
+            # Bookkeeping must never cost a run.
+            self.last_meta = {"prompt_tokens": int(prompt_tokens),
+                              "completion_tokens": int(completion_tokens)}
 
         return text
 

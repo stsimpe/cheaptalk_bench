@@ -116,6 +116,7 @@ class GameEngine:
             "reasonings": reasonings,
             "invalid": invalid_flags,
             "payoffs": payoffs,
+            "llm_calls": {a.agent_id: a.drain_calls() for a in agents},
         }
 
     def _run_round_cheap_talk(self, round_num: int, agents: list[Agent], history: list[dict]) -> dict:
@@ -161,6 +162,9 @@ class GameEngine:
         if any(blocked.values()) or getattr(self.cfg, "message_filter", "none") != "none":
             record["messages_composed"] = composed
             record["messages_blocked"] = blocked
+        # Raw model output of every call this round (added 2026-09-22): lets a
+        # failed parse be traced to its cause (e.g. finish_reason "length").
+        record["llm_calls"] = {a.agent_id: a.drain_calls() for a in agents}
         return record
 
     def run_one(self, run_id: int, client) -> dict:

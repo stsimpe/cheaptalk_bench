@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from games import Game
 from llm_client import LLMClient
@@ -161,6 +161,20 @@ class Agent:
     communication_text: str | None = None  # per-topology routing sentence (None = legacy star)
     noise_seed: int = 0               # varies per run; feeds the no_sense RNG
     action_retries: int = 0           # resample once (or more) when the action is invalid
+    # Every LLM call of the current round: raw text, token counts, finish
+    # reason, whether parsing failed. The engine drains it into the record.
+    _calls: list = field(default_factory=list, repr=False)
+
+    def _llm(self, phase: str, user: str) -> str:
+        """One model call, logged. Sends exactly what a direct call would."""
+        raw = self.client.generate(self._system_prompt(), user)
+        meta = getattr(self.client, "last_meta", None) or {}
+        self._calls.append({"phase": phase, "raw": raw, **meta})
+        return raw
+
+    def drain_calls(self) -> list:
+        out, self._calls = self._calls, []
+        return out
 
     def _system_prompt(self) -> str:
         return build_system_prompt(
@@ -212,15 +226,17 @@ class Agent:
         to N resamples before the invalid output is returned as-is, so the
         invalid-rate metric still sees genuinely stubborn failures.
         """
-        raw = self.client.generate(self._system_prompt(), user)
+        raw = self._llm("action", user)
         parsed, _failed = self._safe_extract(raw, "action")
+        self._calls[-1]["parse_failed"] = _failed
         action = self._canonicalize_action(str(parsed.get("action", "")).strip())
         reasoning = str(parsed.get("reasoning", ""))
         attempts = 0
         while action not in self.game.action_labels and attempts < self.action_retries:
             attempts += 1
-            raw = self.client.generate(self._system_prompt(), user)
+            raw = self._llm("action_retry", user)
             parsed, _failed = self._safe_extract(raw, "action")
+            self._calls[-1]["parse_failed"] = _failed
             action = self._canonicalize_action(str(parsed.get("action", "")).strip())
             reasoning = str(parsed.get("reasoning", ""))
         return action, reasoning
@@ -259,8 +275,9 @@ class Agent:
         user = build_ct_communicate_user(
             self._history_text(history), round_num, extra_instruction=extra,
         )
-        raw = self.client.generate(self._system_prompt(), user)
+        raw = self._llm("message", user)
         parsed, _failed = self._safe_extract(raw, "message")
+        self._calls[-1]["parse_failed"] = _failed
         llm_message = str(parsed.get("message", "")).strip()
         reasoning = str(parsed.get("reasoning", ""))
 
