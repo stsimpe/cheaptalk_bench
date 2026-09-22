@@ -18,9 +18,9 @@ under *Known limitation* below.
 | | question | answer |
 |---|---|---|
 | **RQ1** Direction | does cheap talk push toward cooperative or harmful equilibria? | **helpful**: 0 of 50 meaningful-content PD cells fall below their own silent anchor; talk works by stopping decay, not by building cooperation |
-| **RQ2** Topology | does network structure modulate the effect? do hubs steer outcomes? | **weak directional tendency** (sign test p ≈ 0.19) and the hub mechanism is refuted (hub − leaf ∈ [−0.00, +0.05], r = 0.97) |
+| **RQ2** Topology | does network structure modulate the effect? do hubs steer outcomes? | **weak directional tendency** (sign test p ≈ 0.19); the hub is not a point of collapse (hub − leaf ∈ [−0.00, +0.05]), but leaves respond to it more than it responds to them in 2 of 5 models (lagged test, `hub_lag_test.py`); gemma-2-2b's reversal vanishes when star and ring are measured in the same period |
 | **RQ3** Channel separation | does a social frame act on disposition, on messages, or both? | **two dissociable routes**: a team frame acts on disposition and makes talk redundant; a competitive frame acts on the messages, and an open channel overrides it in 30 of 30 combinations |
-| **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on both levers**: rewiring changes nothing, and in-the-loop lexical filtering fails at 8–35% and at 62–100% blocking, because lies avoid the flagged vocabulary and hostility migrates |
+| **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on both levers**: rewiring changes nothing, and in-the-loop lexical filtering fails at 8–35% and at 62–100% blocking, above all because the harm does not need delivery: with 90–100% of the adversarial messages blocked, cooperation stays at the unfiltered level |
 
 Heterogeneous populations, which occupied the RQ3 slot in an earlier version of
 this programme, were never run and are stated as future work.
@@ -93,6 +93,10 @@ run folders: `{gemma-2-2b-it,gemma-2-9b-it,Llama-3.1-8B-Instruct,Qwen2.5-7B-Inst
 | deception, judged | `python llm_judge.py label --roots <ten> --games pd` then `python deception_report.py --judge-labels <labels.csv>` |
 | judge validation | `python llm_judge.py sample --roots <ten> --games pd --n 120` then `python llm_judge.py validate --human-labels <filled> --judge-labels <labels>` |
 | the prompt-bug checks | `python verify_prompt_bug.py --roots <ten>` |
+| every prompt every agent saw, rebuilt and checked | `python verify_prompts.py <run folders>` |
+| invalid-decision sensitivity of the ledger | `python anchor_sensitivity.py --in-dir cross_model_output_final` |
+| attractor shares, Fisher + Holm | `python attractors.py --roots <ten>` |
+| hub leadership, lagged test | `python hub_lag_test.py --roots <the five star folders>` |
 
 On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 
