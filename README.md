@@ -9,7 +9,7 @@ round, applied across all of its edges. In the cheap-talk condition every round
 has two phases: all agents send one free-form sentence along their edges, *then*
 everyone chooses an action. Messages are costless and non-binding.
 
-**State: 1,895 runs. The grid (1,520) is complete, the corrected-prompt
+**State: 2,020 runs. The grid (1,520) is complete, the corrected-prompt
 ablation is done, and the clique now covers all 14 PD cells in all five
 models, so every research question is answered on three topologies.**
 
