@@ -9,17 +9,17 @@ round, applied across all of its edges. In the cheap-talk condition every round
 has two phases: all agents send one free-form sentence along their edges, *then*
 everyone chooses an action. Messages are costless and non-binding.
 
-**State: the experimental programme is complete — 1,520 runs, all four research
-questions answered.** No further GPU work is planned beyond the ablation noted
-under *Known limitation* below.
+**State: 1,895 runs. The grid (1,520) is complete, the corrected-prompt
+ablation is done, and the clique now covers all 14 PD cells in all five
+models, so every research question is answered on three topologies.**
 
 ## The research questions, and what the corpus says
 
 | | question | answer |
 |---|---|---|
 | **RQ1** Direction | does cheap talk push toward cooperative or harmful equilibria? | **helpful**: 0 of 50 meaningful-content PD cells fall below their own silent anchor; talk works by stopping decay, not by building cooperation |
-| **RQ2** Topology | does network structure modulate the effect? do hubs steer outcomes? | **weak directional tendency** (sign test p ≈ 0.19); the hub is not a point of collapse (hub − leaf ∈ [−0.00, +0.05]), but leaves respond to it more than it responds to them in 2 of 5 models (lagged test, `hub_lag_test.py`); gemma-2-2b's reversal vanishes when star and ring are measured in the same period |
-| **RQ3** Channel separation | does a social frame act on disposition, on messages, or both? | **two dissociable routes**: a team frame acts on disposition and makes talk redundant; a competitive frame acts on the messages, and an open channel overrides it in 30 of 30 combinations |
+| **RQ2** Topology | does network structure modulate the effect? do hubs steer outcomes? | **degree 1 is the exposed position, and nothing beyond it**: over three topologies the star is lowest in 12 of 15 low-communication PD cells (ring − star p = 0.007, clique − star p = 0.035, clique − ring p = 1.00); monotone star < ring < clique in only 6 of 15, so experience dilution has no dose-response. The hub is not a point of collapse (hub − leaf ∈ [−0.00, +0.05]), but leaves respond to it more than it responds to them in 2 of 5 models (`hub_lag_test.py`) |
+| **RQ3** Channel separation | does a social frame act on disposition, on messages, or both? | **two dissociable routes, on every topology**: a team frame acts on disposition and makes talk redundant; a competitive frame acts through the message phase, and an open channel carrying ordinary talk raises a prompt frame in 41 of 45 model × topology × frame combinations and lands in 0.79–1.00 in 44 of 45 |
 | **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on both levers**: rewiring changes nothing, and in-the-loop lexical filtering fails at 8–35% and at 62–100% blocking, above all because the harm does not need delivery: with 90–100% of the adversarial messages blocked, cooperation stays at the unfiltered level |
 
 Heterogeneous populations, which occupied the RQ3 slot in an earlier version of
@@ -33,8 +33,8 @@ run ordering, not sampling, so replicates are genuine independent samples.
 
 - **Games** (`games.py`): Prisoner's Dilemma and Stag Hunt, payoffs taken
   verbatim from Georgousis (2025) for comparability.
-- **Topologies** (`topology.py`): star and cycle were run; clique and line are
-  implemented and untested.
+- **Topologies** (`topology.py`): star, cycle and clique were run (the clique
+  in PD only); the line is implemented and untested.
 - **Scenario ladder** (`message_policies.py`, `run_all_scenarios.py`): 11 labels
   and 14 cells per (model, topology, game), separating the channel from its
   content, and message-borne framing from prompt-borne framing.
