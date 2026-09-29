@@ -112,6 +112,7 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 | `kaggle_g2b_triad.ipynb` | **step 1**: gemma-2-2b re-measured on the star, plus its clique, with the no_comm anchor at n=10 on both (~5 h); its ring comes from the ablation run | `campaign.py` |
 | `kaggle_clique.ipynb` | **steps 2–8**: the clique for the other four models, one model per session, each under 8 h | `campaign.py` |
 | `kaggle_clique_bc.ipynb` | **steps 9–22**: sessions B and C (the six framing cells) on the clique, PD, all five models; change only `STEP` | `campaign.py` |
+| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`), and with one instructed writer among three neutral agents (`--policy-agents 0`); star, PD, one model per step (~15 h in all) | `campaign.py` |
 | `kaggle_judge.ipynb` | the deception judge over the PD corpus — done | `llm_judge.py` |
 
 **Run order for what is left.** Step 1 comes first because it decides how the
