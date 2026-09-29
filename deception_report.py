@@ -58,6 +58,20 @@ HELD_BACK = {
     "counterfactual": "1/15",
 }
 
+# The corrected-prompt runs (ring ablation, the whole clique campaign) carry a
+# `+commfix` tag on every open-channel cell. The tag marks the routing sentence
+# in the system prompt, which the judge never sees -- it reads message text
+# only -- so a validated cell stays validated under it, and folding the tag in
+# is what lets the clique appear here at all. Every other tag (a filter, a
+# single instructed writer) IS a different experiment and stays out.
+FOLD = "+commfix"
+
+
+def report_cell(cell: str) -> str:
+    """The cell name this row is reported under, or '' if it is not reported."""
+    base = cell[:-len(FOLD)] if cell.endswith(FOLD) else cell
+    return "" if "+" in base else base
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -73,10 +87,13 @@ def main():
           & (~K["own_invalid"].astype(bool))]
 
     print(f"=== {args.game.upper()} -- deception, judge vs keyword ===\n")
-    tagged = sorted({c for c in J["cell"].unique() if "+" in c})
-    if tagged:
-        print(f"[note] {len(tagged)} tagged cell(s) are not validated and are "
-              f"excluded: {', '.join(tagged[:6])}\n")
+    dropped = sorted({c for c in J["cell"].unique() if not report_cell(c)})
+    for frame in (J, K):
+        frame["cell"] = frame["cell"].map(report_cell)
+    if dropped:
+        print(f"[note] {len(dropped)} cell(s) belong to a different experiment "
+              f"and are excluded (a filter, a single-writer arm): "
+              f"{', '.join(dropped[:6])}\n")
     print(f"{'cell':42s} {'judge':>17s} {'keyword':>17s}")
     for cell in VALIDATED + list(HELD_BACK):
         j = J[(J["cell"] == cell) & J["is_coop_signal"]]
