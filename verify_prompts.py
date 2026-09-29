@@ -25,7 +25,8 @@ import glob, json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import ExperimentConfig, ModelConfig
 from engine import make_engine
-from message_policies import CONTEXT_FRAMING_PARAGRAPHS, get_extra_message_instruction
+from message_policies import (CONTEXT_FRAMING_PARAGRAPHS, get_extra_message_instruction,
+                              is_replacement_policy)
 from prompts import build_no_comm_user, build_ct_communicate_user, build_ct_action_user
 
 STAR_WORDS = re.compile(r'central agent|peripheral|star network|hub', re.I)
@@ -45,7 +46,8 @@ def load(p):
     hist = []
     for x in r['history']:
         y = dict(x)
-        for k in ('actions', 'payoffs', 'messages', 'messages_seen_by', 'invalid', 'reasonings'):
+        for k in ('actions', 'payoffs', 'messages', 'messages_seen_by', 'invalid',
+                  'reasonings', 'messages_composed', 'messages_blocked'):
             if k in y and isinstance(y[k], dict):
                 y[k] = intkeys(y[k])
         hist.append(y)
@@ -71,8 +73,14 @@ def check(p, show=None):
             if cfg.condition == 'no_comm':
                 prompts['action'] = build_no_comm_user(htxt, rnd)
             else:
-                extra = get_extra_message_instruction(cfg.message_policy, cfg.framing_type)
-                prompts['message'] = build_ct_communicate_user(htxt, rnd, extra_instruction=extra)
+                # The agent's own policy, not the cell's: with --policy-agents
+                # only some agents get the scenario's instruction. A
+                # replacement policy (silence, no_sense) writes no prompt at
+                # all -- the canned message skips the model.
+                if not is_replacement_policy(a.message_policy):
+                    extra = get_extra_message_instruction(a.message_policy, a.framing_type)
+                    prompts['message'] = build_ct_communicate_user(
+                        htxt, rnd, extra_instruction=extra)
                 own = rec.get('messages_composed', rec['messages'])[i] if 'messages_composed' in rec else rec['messages'][i]
                 prompts['action'] = build_ct_action_user(htxt, rnd, own, rec['messages_seen_by'][i])
             n_prompts += len(prompts)
@@ -127,7 +135,12 @@ if __name__ == '__main__':
     roots = sys.argv[1:]
     total = 0; bad = 0; files = 0
     for root in roots:
-        for p in sorted(glob.glob(f'{root}/*/*/*.json')):
+        for p in sorted(glob.glob(f'{root}/**/*.json', recursive=True)):
+            if os.path.basename(p).startswith('_') or f'{os.sep}zips{os.sep}' in p:
+                continue
+            with open(p, encoding='utf-8') as fh:
+                if '"config"' not in fh.read(4096):
+                    continue            # progress notes and other bookkeeping
             n, errs = check(p)
             total += n; files += 1
             if errs:

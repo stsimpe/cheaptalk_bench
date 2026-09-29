@@ -163,6 +163,12 @@ def get_extra_message_instruction(
 #
 # F3 is therefore the interesting one: no existing cell in the corpus is a
 # half-open, deception-enriched channel.
+# "block_all" is not a lexicon: it delivers nothing at all. It exists to
+# separate writing a message from anyone receiving it, which F1 only
+# approximates (it blocks 90-100% and its vocabulary overlaps the competitive
+# instruction's own words).
+BLOCK_ALL = "block_all"
+
 MESSAGE_FILTERS: dict[str, set[str]] = {
     "F1_competitive": {
         "rival", "rivals", "compete", "competition", "competitive",
@@ -186,6 +192,8 @@ def apply_filter(message_filter: str, message: str) -> tuple[str, bool]:
     """
     if message_filter in ("none", "", None):
         return message, False
+    if message_filter == BLOCK_ALL:
+        return "", True
     vocab = MESSAGE_FILTERS.get(message_filter)
     if vocab is None:
         raise ValueError(f"Unknown message filter: {message_filter}")

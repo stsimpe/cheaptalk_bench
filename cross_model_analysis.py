@@ -181,11 +181,14 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
             "scenario": summary["scenario"],
             "cell": cell_label(summary["scenario"], summary["condition"],
                                cfg.get("message_filter", "none"),
-                               bool(cfg.get("topology_aware_comm_prompt", False))),
+                               bool(cfg.get("topology_aware_comm_prompt", False)),
+                               cfg.get("policy_agents")),
             "framing_type": cfg.get("framing_type", ""),
             # In the master table too, so a mixed cell is visible after the
             # fact instead of only at grouping time.
             "message_filter": cfg.get("message_filter", "none"),
+            "policy_agents": ("all" if cfg.get("policy_agents") is None
+                              else "".join(str(a) for a in cfg["policy_agents"])),
             "comm_prompt": ("topology" if cfg.get("topology_aware_comm_prompt")
                             else "legacy_star"),
             "n_rounds": summary["n_rounds"],
@@ -198,7 +201,8 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
 
 
 def cell_label(scenario: str, condition: str,
-               message_filter: str = "none", comm_fix: bool = False) -> str:
+               message_filter: str = "none", comm_fix: bool = False,
+               policy_agents: list | None = None) -> str:
     """Unique label for one experimental cell.
 
     A cell is an experimental condition, so anything that changes the
@@ -232,9 +236,16 @@ def cell_label(scenario: str, condition: str,
         return label
     tags = []
     if message_filter and message_filter != "none":
-        tags.append(message_filter.split("_")[0])   # F3_relative_gain -> F3
+        # F3_relative_gain -> F3; block_all keeps its name, it is not a lexicon
+        tags.append("blockall" if message_filter == "block_all"
+                    else message_filter.split("_")[0])
     if comm_fix:
         tags.append("commfix")
+    if policy_agents is not None:
+        # One adversarial writer among neutral neighbours is its own cell, and
+        # nothing else in the record distinguishes it from the scenario whose
+        # policy it borrows.
+        tags.append("agents" + "".join(str(a) for a in sorted(policy_agents)))
     return f"{label}+{'+'.join(tags)}" if tags else label
 
 

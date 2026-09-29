@@ -17,7 +17,7 @@ ConditionName = Literal["no_comm", "cheap_talk"]
 # message and, when it fires, the message is not delivered -- the sender still
 # writes it and is never told, the neighbours simply receive nothing from it
 # that round. "none" keeps every pre-2026-09 run byte-identical.
-MessageFilter = Literal["none", "F1_competitive", "F3_relative_gain"]
+MessageFilter = Literal["none", "F1_competitive", "F3_relative_gain", "block_all"]
 # "local" runs the model on the current machine via transformers (Kaggle / Colab
 # / your own GPU). The other providers are remote API calls.
 Provider = Literal["groq", "openai", "huggingface", "openrouter", "local"]
@@ -87,6 +87,11 @@ class ExperimentConfig:
     # ("none" keeps every pre-existing scenario byte-identical). Orthogonal to
     # message_policy on purpose: framing_competitive + a filter is the RQ4 cell.
     message_filter: MessageFilter = "none"
+    # The message policy applies only to these agent ids; the others write
+    # ordinary messages. None (the default) means it applies to everyone, as
+    # in every run before 2026-09. Used to ask whether adversarial writing
+    # harms only its author or spreads to the neighbours who read it.
+    policy_agents: list[int] | None = None
     # Resample an invalid action up to this many times (0 = old behavior).
     action_retries: int = 0
     # Describe the routing of messages from the topology instead of from the

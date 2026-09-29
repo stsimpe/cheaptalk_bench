@@ -58,7 +58,7 @@ class GameEngine:
                     client=client,
                     message_max_words=self.cfg.message_max_words,
                     memory_window=self.cfg.memory_window,
-                    message_policy=self.cfg.message_policy,
+                    message_policy=self._policy_for(i),
                     framing_type=self.cfg.framing_type,
                     context_framing=getattr(self.cfg, "context_framing", "none"),
                     message_filter=getattr(self.cfg, "message_filter", "none"),
@@ -76,6 +76,19 @@ class GameEngine:
                 )
             )
         return agents
+
+    def _policy_for(self, agent_id: int) -> str:
+        """The message policy this agent writes under.
+
+        With `policy_agents` set, only those agents get the scenario's policy
+        and everyone else writes ordinary messages, so a single adversarial
+        writer can sit among neutral neighbours. Unset (the default) gives
+        every agent the policy, as in every earlier campaign.
+        """
+        only = getattr(self.cfg, "policy_agents", None)
+        if only is None or agent_id in only:
+            return self.cfg.message_policy
+        return "meaningful"
 
     def _messages_seen_by(self, messages: dict[int, str]) -> dict[int, dict[int, str]]:
         """For each agent, which messages are visible to it: exactly those of

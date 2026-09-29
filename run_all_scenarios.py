@@ -71,7 +71,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--request-delay", type=float, default=None)
     p.add_argument("--out-dir-base", default="results")
     p.add_argument("--message-filter", default="none",
-                   choices=["none", "F1_competitive", "F3_relative_gain"],
+                   choices=["none", "F1_competitive", "F3_relative_gain",
+                            "block_all"],
                    help="RQ4 channel moderation: drop a composed message before "
                         "delivery when it trips the filter. Orthogonal to the "
                         "message policy, so it can be combined with any "
@@ -96,6 +97,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--scenarios", nargs="+", default=None,
                    choices=[s[0] for s in SCENARIOS])
     p.add_argument("--skip-baseline", action="store_true")
+    p.add_argument("--policy-agents", nargs="+", type=int, default=None,
+                   help="Apply the scenario's message policy only to these "
+                        "agent ids; the others write ordinary messages. "
+                        "Default: everyone, as in every earlier campaign. "
+                        "Runs land in their own tree.")
     p.add_argument("--conditions", nargs="+", default=None,
                    choices=["no_comm", "cheap_talk"],
                    help="Run only these arms of each scenario. Default: every "
@@ -167,6 +173,11 @@ def main():
     # from overwriting the full session's.
     if args.conditions and set(args.conditions) != {"no_comm", "cheap_talk"}:
         args.out_dir_base = f"{args.out_dir_base}_{conditions_tag(args.conditions)}"
+    # One adversarial writer among neutral neighbours is a different cell from
+    # the scenario it borrows its policy from, so it gets its own tree too.
+    if args.policy_agents is not None:
+        args.out_dir_base = (f"{args.out_dir_base}_agents"
+                             + "".join(str(a) for a in sorted(args.policy_agents)))
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -259,6 +270,7 @@ def main():
                     message_policy=policy, framing_type=framing_type,
                     context_framing=context_framing,
                     message_filter=args.message_filter,
+                    policy_agents=args.policy_agents,
                     topology_aware_comm_prompt=args.topology_aware_comm_prompt,
                     scenario=sc_label,
                     action_retries=args.action_retries,
