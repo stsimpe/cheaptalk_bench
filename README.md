@@ -9,7 +9,7 @@ round, applied across all of its edges. In the cheap-talk condition every round
 has two phases: all agents send one free-form sentence along their edges, *then*
 everyone chooses an action. Messages are costless and non-binding.
 
-**State: 2,020 runs. The grid (1,520) is complete, the corrected-prompt
+**State: 2,070 runs. The grid (1,520) is complete, the corrected-prompt
 ablation is done, and the clique now covers all 14 PD cells in all five
 models, so every research question is answered on three topologies.**
 
@@ -20,7 +20,7 @@ models, so every research question is answered on three topologies.**
 | **RQ1** Direction | does cheap talk push toward cooperative or harmful equilibria? | **helpful**: 0 of 50 meaningful-content PD cells fall below their own silent anchor; talk works by stopping decay, not by building cooperation |
 | **RQ2** Topology | does network structure modulate the effect? do hubs steer outcomes? | **degree 1 is the exposed position, and nothing beyond it**: over three topologies the star is lowest in 12 of 15 low-communication PD cells (ring − star p = 0.007, clique − star p = 0.035, clique − ring p = 1.00); monotone star < ring < clique in only 6 of 15, so experience dilution has no dose-response. The hub is not a point of collapse (hub − leaf ∈ [−0.00, +0.05]), but leaves respond to it more than it responds to them in 2 of 5 models (`hub_lag_test.py`) |
 | **RQ3** Channel separation | does a social frame act on disposition, on messages, or both? | **two dissociable routes, on every topology**: a team frame acts on disposition and makes talk redundant; a competitive frame acts through the message phase, and an open channel carrying ordinary talk raises a prompt frame in 41 of 45 model × topology × frame combinations and lands in 0.79–1.00 in 44 of 45 |
-| **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on both levers**: rewiring changes nothing, and in-the-loop lexical filtering fails at 8–35% and at 62–100% blocking, above all because the harm does not need delivery: with 90–100% of the adversarial messages blocked, cooperation stays at the unfiltered level |
+| **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on both levers, with the mechanism isolated**: rewiring changes nothing on three topologies, and filtering fails because the harm has two sufficient routes — writing an adversarial message damages its author with nothing delivered (block-all ≈ the unfiltered cell), and reading one drags uninstructed agents from 0.98–1.00 to 0.24–0.67. A filter acts on delivery, so it removes one of two |
 
 Heterogeneous populations, which occupied the RQ3 slot in an earlier version of
 this programme, were never run and are stated as future work.
@@ -112,7 +112,7 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 | `kaggle_g2b_triad.ipynb` | **step 1**: gemma-2-2b re-measured on the star, plus its clique, with the no_comm anchor at n=10 on both (~5 h); its ring comes from the ablation run | `campaign.py` |
 | `kaggle_clique.ipynb` | **steps 2–8**: the clique for the other four models, one model per session, each under 8 h | `campaign.py` |
 | `kaggle_clique_bc.ipynb` | **steps 9–22**: sessions B and C (the six framing cells) on the clique, PD, all five models; change only `STEP` | `campaign.py` |
-| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`), and with one instructed writer among three neutral agents (`--policy-agents 0`); star, PD, one model per step (~15 h in all) | `campaign.py` |
+| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from** — done: the competitive frame with nothing delivered (`block_all`), and with one instructed writer among three neutral agents (`--policy-agents 0`); star, PD, 50 runs in `harm_source/` | `campaign.py` |
 | `kaggle_judge.ipynb` | the deception judge over the PD corpus — done for star and ring; now takes the clique too (its 14,399 messages, ~1–1.5 h with the old cache attached) | `llm_judge.py` |
 
 **Run order for what is left.** Step 1 comes first because it decides how the
