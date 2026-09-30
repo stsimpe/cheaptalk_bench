@@ -96,6 +96,7 @@ run folders: `{gemma-2-2b-it,gemma-2-9b-it,Llama-3.1-8B-Instruct,Qwen2.5-7B-Inst
 | every prompt every agent saw, rebuilt and checked | `python verify_prompts.py <run folders>` |
 | invalid-decision sensitivity of the ledger | `python anchor_sensitivity.py --in-dir cross_model_output_final` |
 | attractor shares, Fisher + Holm | `python attractors.py --roots <ten>` |
+| where the adversarial harm is produced | `python harm_source_report.py --harm-dir harm_source --grid-root <project root>` |
 | hub leadership, lagged test | `python hub_lag_test.py --roots <the five star folders>` |
 | star vs ring vs clique, per RQ | `python topology_compare.py --star <star> --ring <cycle> --ring-fix <cycle_commfix> --clique <clique>` |
 | the three-topology figure | `python topology_three_plot.py --star <star> --ring <cycle_commfix> --clique <clique> --out figures/topology_three_pd.png` |
