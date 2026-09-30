@@ -151,8 +151,11 @@ class GameEngine:
         invalid_flags: dict[int, bool] = {}
         for agent in agents:
             # The sender knows what it wrote even if the channel dropped it --
-            # the filter moderates delivery, not the agent.
-            own = composed[agent.agent_id]
+            # the filter moderates delivery, not the agent. Unless the run
+            # asks otherwise: hide_own_message removes that one quotation, so
+            # composing and re-reading can be told apart.
+            own = ("" if getattr(self.cfg, "hide_own_message", False)
+                   else composed[agent.agent_id])
             received = seen[agent.agent_id]
             action, reasoning = agent.choose_action_cheap_talk(history, round_num, own, received)
             actions[agent.agent_id] = action

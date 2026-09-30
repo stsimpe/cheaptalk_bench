@@ -97,6 +97,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--scenarios", nargs="+", default=None,
                    choices=[s[0] for s in SCENARIOS])
     p.add_argument("--skip-baseline", action="store_true")
+    p.add_argument("--hide-own-message", action="store_true",
+                   help="Do not quote the agent's own message back to it in "
+                        "the action phase. Default off, as in every earlier "
+                        "run. Own tree.")
     p.add_argument("--policy-agents", nargs="+", type=int, default=None,
                    help="Apply the scenario's message policy only to these "
                         "agent ids; the others write ordinary messages. "
@@ -178,6 +182,8 @@ def main():
     if args.policy_agents is not None:
         args.out_dir_base = (f"{args.out_dir_base}_agents"
                              + "".join(str(a) for a in sorted(args.policy_agents)))
+    if args.hide_own_message:
+        args.out_dir_base = f"{args.out_dir_base}_hideown"
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -271,6 +277,7 @@ def main():
                     context_framing=context_framing,
                     message_filter=args.message_filter,
                     policy_agents=args.policy_agents,
+                    hide_own_message=args.hide_own_message,
                     topology_aware_comm_prompt=args.topology_aware_comm_prompt,
                     scenario=sc_label,
                     action_retries=args.action_retries,

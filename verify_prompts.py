@@ -81,7 +81,9 @@ def check(p, show=None):
                     extra = get_extra_message_instruction(a.message_policy, a.framing_type)
                     prompts['message'] = build_ct_communicate_user(
                         htxt, rnd, extra_instruction=extra)
-                own = rec.get('messages_composed', rec['messages'])[i] if 'messages_composed' in rec else rec['messages'][i]
+                own = ('' if cfg.hide_own_message
+                       else (rec['messages_composed'][i] if 'messages_composed' in rec
+                             else rec['messages'][i]))
                 prompts['action'] = build_ct_action_user(htxt, rnd, own, rec['messages_seen_by'][i])
             n_prompts += len(prompts)
             full = '\n'.join(prompts.values())

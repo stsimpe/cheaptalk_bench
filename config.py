@@ -92,6 +92,11 @@ class ExperimentConfig:
     # in every run before 2026-09. Used to ask whether adversarial writing
     # harms only its author or spreads to the neighbours who read it.
     policy_agents: list[int] | None = None
+    # The sender is not shown the message it just wrote. Off (the default) is
+    # every run before 2026-09-30, where the action prompt always quoted it
+    # back. On, with the block_all filter, it asks whether the harm of writing
+    # an adversarial message survives when the writer never re-reads it.
+    hide_own_message: bool = False
     # Resample an invalid action up to this many times (0 = old behavior).
     action_retries: int = 0
     # Describe the routing of messages from the topology instead of from the

@@ -182,7 +182,8 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
             "cell": cell_label(summary["scenario"], summary["condition"],
                                cfg.get("message_filter", "none"),
                                bool(cfg.get("topology_aware_comm_prompt", False)),
-                               cfg.get("policy_agents")),
+                               cfg.get("policy_agents"),
+                               bool(cfg.get("hide_own_message", False))),
             "framing_type": cfg.get("framing_type", ""),
             # In the master table too, so a mixed cell is visible after the
             # fact instead of only at grouping time.
@@ -202,7 +203,8 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
 
 def cell_label(scenario: str, condition: str,
                message_filter: str = "none", comm_fix: bool = False,
-               policy_agents: list | None = None) -> str:
+               policy_agents: list | None = None,
+               hide_own: bool = False) -> str:
     """Unique label for one experimental cell.
 
     A cell is an experimental condition, so anything that changes the
@@ -246,6 +248,8 @@ def cell_label(scenario: str, condition: str,
         # nothing else in the record distinguishes it from the scenario whose
         # policy it borrows.
         tags.append("agents" + "".join(str(a) for a in sorted(policy_agents)))
+    if hide_own:
+        tags.append("hideown")
     return f"{label}+{'+'.join(tags)}" if tags else label
 
 

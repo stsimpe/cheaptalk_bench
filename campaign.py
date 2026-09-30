@@ -92,7 +92,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
          message_filter: str = "none",
          comm_fix: bool = False,
          conditions: list[str] | None = None,
-         policy_agents: list[int] | None = None) -> dict:
+         policy_agents: list[int] | None = None,
+         hide_own: bool = False) -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -138,6 +139,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
                   if policy_agents is not None else "")
     if agents_tag:
         result_dir = f"{result_dir}_{agents_tag}"
+    if hide_own:
+        result_dir = f"{result_dir}_hideown"
     if expected_runs(scenarios, n_runs, len(games), conditions) == 0:
         raise SystemExit(f"{scenarios} have no {conditions} arm -- nothing would run.")
     zip_name = f"{short}_{topology}_session{session}"
@@ -151,6 +154,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         zip_name += f"_{conditions_tag(conditions)}"
     if agents_tag:
         zip_name += f"_{agents_tag}"
+    if hide_own:
+        zip_name += "_hideown"
     return {
         "model": model, "session": session, "topology": topology,
         "scenarios": scenarios, "n_runs": n_runs, "n_rounds": n_rounds,
@@ -158,6 +163,7 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         "comm_fix": comm_fix,
         "conditions": conditions,
         "policy_agents": policy_agents,
+        "hide_own": hide_own,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
         "expected_runs": expected_runs(scenarios, n_runs, len(games), conditions),
@@ -189,6 +195,8 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
         cmd += ["--conditions", *p["conditions"]]
     if p.get("policy_agents") is not None:
         cmd += ["--policy-agents", *[str(a) for a in p["policy_agents"]]]
+    if p.get("hide_own"):
+        cmd += ["--hide-own-message"]
     cmd += ["--scenarios", *p["scenarios"]]
     return cmd
 
@@ -292,6 +300,9 @@ def main() -> int:
                          "the topology instead of the legacy star sentence. "
                          "Output lands in its own tree; off reproduces the "
                          "1,420-run grid byte-for-byte.")
+    ap.add_argument("--hide-own-message", action="store_true",
+                    help="The writer is not shown its own message in the "
+                         "action phase. Own tree.")
     ap.add_argument("--policy-agents", nargs="+", type=int, default=None,
                     help="Give the scenario's message policy to these agents "
                          "only; the rest write ordinary messages. Own tree.")
@@ -313,7 +324,8 @@ def main() -> int:
              args.n_rounds, args.out_root, args.max_new_tokens, args.scenarios,
              games=args.games, message_filter=args.message_filter,
              comm_fix=args.topology_aware_comm_prompt,
-             conditions=args.conditions, policy_agents=args.policy_agents)
+             conditions=args.conditions, policy_agents=args.policy_agents,
+             hide_own=args.hide_own_message)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)
@@ -334,6 +346,9 @@ def main() -> int:
     if p.get("policy_agents") is not None:
         print(f"WRITERS      : policy only for agents {p['policy_agents']}, "
               f"the rest write ordinary messages -> {p['result_dir']}")
+    if p.get("hide_own"):
+        print(f"OWN MESSAGE  : hidden from its writer in the action phase "
+              f"-> {p['result_dir']}")
     print(f"expecting    : {p['expected_runs']} run files")
     print(f"results ->   : {p['result_dir']}")
     print("=" * 70)
