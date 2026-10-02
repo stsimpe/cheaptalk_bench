@@ -9,9 +9,12 @@ round, applied across all of its edges. In the cheap-talk condition every round
 has two phases: all agents send one free-form sentence along their edges, *then*
 everyone chooses an action. Messages are costless and non-binding.
 
-**State: 2,070 runs. The grid (1,520) is complete, the corrected-prompt
-ablation is done, and the clique now covers all 14 PD cells in all five
-models, so every research question is answered on three topologies.**
+**State: 2,170 runs, data collection for this stage complete.** The grid
+(1,520) is done, the corrected-prompt ablation and the targeted ring re-run
+have closed the prompt bug where it carries a claim, the clique covers all 14
+PD cells in all five models, and the harm-source experiments isolate where the
+adversarial damage is produced. Every research question is answered on three
+topologies.
 
 ## The research questions, and what the corpus says
 
@@ -20,7 +23,9 @@ models, so every research question is answered on three topologies.**
 | **RQ1** Direction | does cheap talk push toward cooperative or harmful equilibria? | **helpful**: 0 of 50 meaningful-content PD cells fall below their own silent anchor; talk works by stopping decay, not by building cooperation |
 | **RQ2** Topology | does network structure modulate the effect? do hubs steer outcomes? | **degree 1 is the exposed position, and nothing beyond it**: over three topologies the star is lowest in 12 of 15 low-communication PD cells (ring − star p = 0.007, clique − star p = 0.035, clique − ring p = 1.00); monotone star < ring < clique in only 6 of 15, so experience dilution has no dose-response. The hub is not a point of collapse (hub − leaf ∈ [−0.00, +0.05]), but leaves respond to it more than it responds to them in 2 of 5 models (`hub_lag_test.py`) |
 | **RQ3** Channel separation | does a social frame act on disposition, on messages, or both? | **two dissociable routes, on every topology**: a team frame acts on disposition and makes talk redundant; a competitive frame acts through the message phase, and an open channel carrying ordinary talk raises a prompt frame in 41 of 45 model × topology × frame combinations and lands in 0.79–1.00 in 44 of 45 |
-| **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on both levers, with the mechanism isolated**: rewiring changes nothing on three topologies, and filtering fails because the harm has two sufficient routes — writing an adversarial message damages its author with nothing delivered (block-all ≈ the unfiltered cell), and reading one drags uninstructed agents from 0.98–1.00 to 0.24–0.67. A filter acts on delivery, so it removes one of two |
+| **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on both levers, with the mechanism isolated**: rewiring changes nothing on three topologies, and filtering fails because the harm has two sufficient routes — writing an adversarial message damages its author with nothing delivered (block-all ≈ the unfiltered cell), and reading one drags uninstructed agents from 0.98–1.00 to 0.24–0.67. A filter acts on delivery, so it removes one of two. The mechanism is narrower still: what damages the author
+is its own message *persisting in its context at decision time* -- withholding
+it recovers +0.23 on average, one model from 0.03 to 0.89 |
 
 Heterogeneous populations, which occupied the RQ3 slot in an earlier version of
 this programme, were never run and are stated as future work.
@@ -70,7 +75,7 @@ reproduces byte-for-byte: `context_framing`, `message_filter`, `action_retries`,
 ├── rq4_filter_plot.py     the RQ4 figure
 ├── verify_prompt_bug.py   the four log-only checks of the prompt bug
 ├── commfix_report.py      the ablation, judged against a noise floor
-├── kaggle_*.ipynb         the four campaign notebooks (all call campaign.py)
+├── kaggle_*.ipynb         the nine campaign notebooks (all call campaign.py)
 ├── cross_model_output_final/  the released CSVs behind every number
 ├── figures/               the released figures
 ├── notebooks/             proposals for the next stage: clique, mixed
@@ -111,36 +116,50 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 | `kaggle_runner.ipynb` | the main campaigns (star grid, cycle grid, context framings) — done | `campaign.py` |
 | `kaggle_rq4_f1.ipynb` | the RQ4 broad-filter cell, five models in one session — done | `campaign.py` |
 | `kaggle_commfix_ablation.ipynb` | the corrected-prompt ablation — done for four models; stops on purpose if re-run | `campaign.py` |
-| `kaggle_g2b_triad.ipynb` | **step 1**: gemma-2-2b re-measured on the star, plus its clique, with the no_comm anchor at n=10 on both (~5 h); its ring comes from the ablation run | `campaign.py` |
-| `kaggle_clique.ipynb` | **steps 2–8**: the clique for the other four models, one model per session, each under 8 h | `campaign.py` |
-| `kaggle_clique_bc.ipynb` | **steps 9–22**: sessions B and C (the six framing cells) on the clique, PD, all five models; change only `STEP` | `campaign.py` |
-| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`) and with one instructed writer among three neutral agents (`--policy-agents 0`). Steps 1–5, star: done, 50 runs in `harm_source/`. Steps 6–8, the one-writer cell on the clique, where a reader also has two uninstructed partners (~8.5 h) | `campaign.py` |
-| `kaggle_ring_competitive.ipynb` | the ring's two competitive cells re-run with the corrected prompt — the cells RQ3 and RQ4 rest on, which the session-A ablation did not cover; 50 runs, ~11.6 h | `campaign.py` |
-| `kaggle_judge.ipynb` | the deception judge over the PD corpus — done for star and ring; now takes the clique too (its 14,399 messages, ~1–1.5 h with the old cache attached) | `llm_judge.py` |
+| `kaggle_g2b_triad.ipynb` | gemma-2-2b re-measured on the star, plus its clique, with the no_comm anchor at n=10 on both — done; its ring comes from the ablation run | `campaign.py` |
+| `kaggle_clique.ipynb` | steps 2–8: the clique for the other four models, one model per session — done | `campaign.py` |
+| `kaggle_clique_bc.ipynb` | steps 9–22: sessions B and C (the six framing cells) on the clique, PD, all five models — done | `campaign.py` |
+| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`) and with one instructed writer among three neutral agents (`--policy-agents 0`). Steps 1–11 — done, 100 runs in `harm_source/`: the star cells, the one-writer cell on the clique, and the cell that withholds the author's own message from it | `campaign.py` |
+| `kaggle_ring_competitive.ipynb` | the ring's two competitive cells re-run with the corrected prompt — the cells RQ3 and RQ4 rest on, which the session-A ablation did not cover — done | `campaign.py` |
+| `kaggle_judge.ipynb` | the deception judge over the PD corpus — done for all three topologies, 38,275 judged messages | `llm_judge.py` |
 
-**Run order for what is left.** Step 1 comes first because it decides how the
-rest is read. gemma-2-2b is the one model whose ring cooperates less than its
+**Why the gemma-2-2b star was re-measured.** gemma-2-2b is the one model whose ring cooperates less than its
 star (0.18 against 0.67, no communication), and that star was measured in May,
 before Kaggle's image moved to transformers 5.x on 2026-07-28, while the ring
 was measured after. Step 1 re-measures that star on the current image, and its
 ring comes from the ablation run of the same month; every September record
 carries its library versions, so the two sessions can be checked for a match
-rather than assumed to have one. That makes gemma-2-2b the one model whose
-star-ring contrast carries no version gap.
+rather than assumed to have one. That made gemma-2-2b the one model whose
+star-ring contrast carries no version gap, and the reversal did not survive it:
+-0.50 became -0.03.
 
-The four campaign notebooks go through `campaign.py`, which prints its plan and
+The campaign notebooks go through `campaign.py`, which prints its plan and
 refuses to start when the plan does not match what was asked. Kaggle executes the cells in *your* workspace,
 not the ones in this repo: after a notebook changes here, re-import it.
 
-## Known limitation, being closed
+## Known limitations, and what was done about them
 
-Until 2026-09-20 the cheap-talk system prompt carried one routing sentence
-written for the star, on every topology, so the 500 ring runs with an open
-channel were told about a hub they did not have. Delivery is computed from the
-topology and never reads the prompt: verified correct in all 64,640 agent-rounds.
-`verify_prompt_bug.py` bounds the behavioural impact; the fix is opt-in
+**The prompt bug, closed where it matters.** Until 2026-09-20 the cheap-talk
+system prompt carried one routing sentence written for the star, on every
+topology, so the 500 ring runs with an open channel were told about a hub they
+did not have. Delivery is computed from the topology and never reads the
+prompt: verified correct in all 64,640 agent-rounds. The fix is opt-in
 (`--topology-aware-comm-prompt`) so the existing corpus stays reproducible, and
-`kaggle_commfix_ablation.ipynb` re-runs the four cells that carry RQ2.
+since 2026-09-22 a non-star topology without it is refused outright. The
+behavioural impact is bounded by measurement, not argument: the five-model
+ablation left 19 of 20 cells unchanged, and the targeted re-run of the two
+competitive ring cells that RQ3 and RQ4 rest on left 9 of 10 within 0.11.
+
+**Two flaws that are disclosed, not repaired.** The star grid's `no_sense`
+replicates share one template sequence (the per-run seed did not exist before
+2026-07-27), so those five runs are not independent draws of the nonsense
+content; and gemma-2-9b's `framing_competitive` ran at a different token budget
+on the star than elsewhere. `audit_corpus.py` prints both every time it runs.
+
+**A tokenizer defect, uniform across the corpus.** Llama and Gemma receive a
+doubled BOS token. It is identical in every run ever recorded, including every
+anchor, so it cannot produce a contrast; it was deliberately left alone rather
+than changed mid-campaign.
 
 ## Install
 
