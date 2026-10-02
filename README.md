@@ -94,6 +94,7 @@ run folders: `{gemma-2-2b-it,gemma-2-9b-it,Llama-3.1-8B-Instruct,Qwen2.5-7B-Inst
 | judge validation | `python llm_judge.py sample --roots <ten> --games pd --n 120` then `python llm_judge.py validate --human-labels <filled> --judge-labels <labels>` |
 | the prompt-bug checks | `python verify_prompt_bug.py --roots <ten>` |
 | every prompt every agent saw, rebuilt and checked | `python verify_prompts.py <run folders>` |
+| the recorded data itself: payoffs, delivery, invariants, duplicates | `python audit_corpus.py <run folders>` |
 | invalid-decision sensitivity of the ledger | `python anchor_sensitivity.py --in-dir cross_model_output_final` |
 | attractor shares, Fisher + Holm | `python attractors.py --roots <ten>` |
 | where the adversarial harm is produced | `python harm_source_report.py --harm-dir harm_source --grid-root <project root>` |
