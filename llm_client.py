@@ -242,6 +242,19 @@ class LocalTransformersClient(LLMClient):
         n_params = sum(p.numel() for p in self.model.parameters()) / 1e9
         print(f"[local] Model loaded: {n_params:.1f}B params on {device}, "
               f"{'4-bit quantized' if use_quant else 'fp16'}")
+        # Where the layers actually landed. On Kaggle's T4 x2, device_map="auto"
+        # may spread one model over both cards, which buys no speed: the line
+        # above names only the device of the first weight, so it cannot show
+        # that. Printing only; nothing about generation changes.
+        try:
+            placed = getattr(self.model, "hf_device_map", None) or {}
+            if placed:
+                from collections import Counter
+                spread = Counter(str(d) for d in placed.values())
+                print(f"[local] device map: {dict(spread)} "
+                      f"(modules per device; {torch.cuda.device_count()} GPU visible)")
+        except Exception:
+            pass
 
     def generate(self, system: str, user: str) -> str:
         torch = self._torch

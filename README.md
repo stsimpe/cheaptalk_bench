@@ -14,7 +14,9 @@ everyone chooses an action. Messages are costless and non-binding.
 have closed the prompt bug where it carries a claim, the clique covers all 14
 PD cells in all five models, and the harm-source experiments isolate where the
 adversarial damage is produced. Every research question is answered on three
-topologies.
+topologies. Next, from October 2026: steps 12–14 of `kaggle_harm_source.ipynb`,
+which ask whether a message acts through the agent that writes it or through
+the agents that read it.
 
 ## The research questions, and what the corpus says
 
@@ -119,7 +121,7 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 | `kaggle_g2b_triad.ipynb` | gemma-2-2b re-measured on the star, plus its clique, with the no_comm anchor at n=10 on both — done; its ring comes from the ablation run | `campaign.py` |
 | `kaggle_clique.ipynb` | steps 2–8: the clique for the other four models, one model per session — done | `campaign.py` |
 | `kaggle_clique_bc.ipynb` | steps 9–22: sessions B and C (the six framing cells) on the clique, PD, all five models — done | `campaign.py` |
-| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`) and with one instructed writer among three neutral agents (`--policy-agents 0`). Steps 1–11 — done, 100 runs in `harm_source/`: the star cells, the one-writer cell on the clique, and the cell that withholds the author's own message from it | `campaign.py` |
+| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`) and with one instructed writer among three neutral agents (`--policy-agents 0`). Steps 1–11 — done, 100 runs in `harm_source/`: the star cells, the one-writer cell on the clique, and the cell that withholds the author's own message from it. Steps 12–14 — **next**: does a message act through its speaker or its listeners? Ordinary talk with the author's own message withheld (`baseline_hideown`) or with nothing delivered (`baseline_block_all`), and the competitive frame delivered with the author's message withheld (`competitive_hideown`); star, PD, five models, decision rules written into the notebook before the run | `campaign.py` |
 | `kaggle_ring_competitive.ipynb` | the ring's two competitive cells re-run with the corrected prompt — the cells RQ3 and RQ4 rest on, which the session-A ablation did not cover — done | `campaign.py` |
 | `kaggle_judge.ipynb` | the deception judge over the PD corpus — done for all three topologies, 38,275 judged messages | `llm_judge.py` |
 
