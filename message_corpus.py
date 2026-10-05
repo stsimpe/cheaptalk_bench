@@ -53,7 +53,8 @@ def build(roots: list[str]) -> pd.DataFrame:
         model = normalise_model_id(cfg.get("model", {}).get("model_id", "unknown"))
         cell = cell_label(summary["scenario"], summary["condition"],
                           cfg.get("message_filter", "none"),
-                          bool(cfg.get("topology_aware_comm_prompt", False)))
+                          bool(cfg.get("topology_aware_comm_prompt", False)),
+                          action_labels=cfg.get("action_labels", "standard"))
         topology = summary["topology"]
         coop = GAMES[game_name].cooperative_action
         n_runs += 1

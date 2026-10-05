@@ -12,7 +12,9 @@ history, for every agent, round and phase, and checks what the agent saw:
   - the horizon stays hidden (no total-rounds wording in the prompt);
   - the history window is the last 10 rounds, the agent's own row is its own
     action and payoff, and only neighbours' actions are shown;
-  - the messages an agent receives are exactly its neighbours' messages.
+  - the messages an agent receives are exactly its neighbours' messages;
+  - the actions offered are the run's label scheme, and with renamed labels
+    the game's own names never reach an agent through the protocol text.
 
 Run it on every new batch:
 
@@ -25,6 +27,7 @@ import glob, json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import ExperimentConfig, ModelConfig
 from engine import make_engine
+from games import surface_labels
 from message_policies import (CONTEXT_FRAMING_PARAGRAPHS, get_extra_message_instruction,
                               is_replacement_policy)
 from prompts import build_no_comm_user, build_ct_communicate_user, build_ct_action_user
@@ -59,6 +62,10 @@ def check(p, show=None):
     eng = make_engine(cfg)
     agents = eng.build_agents(client=None, run_id=r['run_id'])
     topo = eng.topology
+    # The record stores the game's own labels; the prompt shows the scheme's.
+    offered = surface_labels(eng.game, cfg.action_labels)
+    display = dict(zip(eng.game.action_labels, offered))
+    own_names = re.compile(r'\b(' + '|'.join(map(re.escape, eng.game.action_labels)) + r')\b')
     errs = []
     n_prompts = 0
     for rnd in range(1, len(hist) + 1):
@@ -116,8 +123,20 @@ def check(p, show=None):
             if past and seen_ids != sorted(nbs):
                 errs.append(f'r{rnd} a{i}: history shows actions of {seen_ids}, neighbours {nbs}')
             for h in past[-10:]:
-                if f"You chose: {h['actions'][i]}  (payoff this round: {h['payoffs'][i]})" not in htxt:
+                act = display.get(h['actions'][i], h['actions'][i])
+                if f"You chose: {act}  (payoff this round: {h['payoffs'][i]})" not in htxt:
                     errs.append(f'r{rnd} a{i}: own row wrong for round {h["round"]}'); break
+            # --- action names: the scheme's, and with renamed labels nothing
+            # of the game's own in the protocol text (system prompt, the
+            # "chose:" lines). Messages are the models' own words and may name
+            # anything, so they are not part of this check.
+            if f'Actions available: {offered[0]} or {offered[1]}.' not in sysp:
+                errs.append(f'r{rnd} a{i}: actions offered are not {offered}')
+            if cfg.action_labels != 'standard':
+                protocol = sysp + '\n' + '\n'.join(
+                    l for l in htxt.splitlines() if ' chose: ' in l)
+                if own_names.search(protocol):
+                    errs.append(f'r{rnd} a{i}: the game\'s own action names reach the prompt')
             # --- messages: exactly what the neighbours sent, nothing else
             if cfg.condition == 'cheap_talk':
                 recv = re.findall(r'From neighbor #(\d+): "(.*)"', prompts['action'].split('### Current round')[1])

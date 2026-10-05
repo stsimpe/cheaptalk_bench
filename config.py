@@ -40,6 +40,10 @@ FramingType = Literal["business", "team", "competitive", "neutral"]
 # message-phase "framing" policy, which only shapes the communicate prompt.
 ContextFraming = Literal["none", "business", "team", "competitive"]
 
+# What the agents are told the two actions are called (games.ACTION_LABEL_SCHEMES).
+# "standard" is every run before 2026-10; "neutral" shows J / F.
+ActionLabels = Literal["standard", "neutral"]
+
 
 DEFAULT_MODELS: dict[str, str] = {
     "groq": "llama-3.1-8b-instant",
@@ -97,6 +101,12 @@ class ExperimentConfig:
     # back. On, with the block_all filter, it asks whether the harm of writing
     # an adversarial message survives when the writer never re-reads it.
     hide_own_message: bool = False
+    # Rename the two actions in every prompt -- payoff table, list of choices,
+    # response format, history -- without touching the game ("standard" is
+    # every run before 2026-10; "neutral" shows J / F). The record keeps the
+    # game's own labels, so analysis is unchanged; the cell label carries a
+    # +neutral tag on both arms, since the names reach the closed arm too.
+    action_labels: ActionLabels = "standard"
     # Resample an invalid action up to this many times (0 = old behavior).
     action_retries: int = 0
     # Describe the routing of messages from the topology instead of from the

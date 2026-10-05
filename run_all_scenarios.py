@@ -21,6 +21,7 @@ from datetime import datetime
 
 from config import ExperimentConfig, ModelConfig, DEFAULT_MODELS
 from engine import make_engine
+from games import ACTION_LABEL_SCHEMES
 from llm_client import make_client, preflight_probe, TokenBudgetExceeded
 
 
@@ -101,6 +102,12 @@ def parse_args() -> argparse.Namespace:
                    help="Do not quote the agent's own message back to it in "
                         "the action phase. Default off, as in every earlier "
                         "run. Own tree.")
+    p.add_argument("--action-labels", default="standard",
+                   choices=sorted(ACTION_LABEL_SCHEMES),
+                   help="What the agents are told the two actions are called. "
+                        "'standard' (Cooperate/Defect, Stag/Hare) is every "
+                        "earlier run; 'neutral' shows J/F with the same payoffs. "
+                        "The record keeps the game's own labels. Own tree.")
     p.add_argument("--policy-agents", nargs="+", type=int, default=None,
                    help="Apply the scenario's message policy only to these "
                         "agent ids; the others write ordinary messages. "
@@ -184,6 +191,10 @@ def main():
                              + "".join(str(a) for a in sorted(args.policy_agents)))
     if args.hide_own_message:
         args.out_dir_base = f"{args.out_dir_base}_hideown"
+    # Renamed actions reach the closed arm as well, so a neutral-label tree
+    # must never share a folder -- or a no_comm anchor -- with a standard one.
+    if args.action_labels != "standard":
+        args.out_dir_base = f"{args.out_dir_base}_{args.action_labels}"
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -278,6 +289,7 @@ def main():
                     message_filter=args.message_filter,
                     policy_agents=args.policy_agents,
                     hide_own_message=args.hide_own_message,
+                    action_labels=args.action_labels,
                     topology_aware_comm_prompt=args.topology_aware_comm_prompt,
                     scenario=sc_label,
                     action_retries=args.action_retries,

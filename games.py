@@ -38,12 +38,19 @@ class Game:
         """Payoff for the row player playing a_self against a_other."""
         return self.payoffs[(a_self, a_other)][0]
 
-    def describe_payoffs(self) -> str:
-        """Text block suitable for pasting into prompts."""
+    def describe_payoffs(self, labels: tuple[str, str] | None = None) -> str:
+        """Text block suitable for pasting into prompts.
+
+        `labels` renames the two actions in the table and nothing else (see
+        ACTION_LABEL_SCHEMES): the payoffs are still looked up by the game's
+        own labels, so no number can move. None keeps the table byte-identical
+        to every run before 2026-10.
+        """
         c, d = self.action_labels
-        row = lambda x: f"| {x:9s} | {self.payoffs[(x, c)][0]}, {self.payoffs[(x, c)][1]} | {self.payoffs[(x, d)][0]}, {self.payoffs[(x, d)][1]} |"
+        shown = dict(zip(self.action_labels, labels or self.action_labels))
+        row = lambda x: f"| {shown[x]:9s} | {self.payoffs[(x, c)][0]}, {self.payoffs[(x, c)][1]} | {self.payoffs[(x, d)][0]}, {self.payoffs[(x, d)][1]} |"
         return (
-            f"|           | {c:9s} | {d:9s} |\n"
+            f"|           | {shown[c]:9s} | {shown[d]:9s} |\n"
             f"| --------- | --------- | --------- |\n"
             f"{row(c)}\n"
             f"{row(d)}"
@@ -86,3 +93,24 @@ GAMES: dict[str, Game] = {
     "pd": PRISONERS_DILEMMA,
     "sh": STAG_HUNT,
 }
+
+
+# What the agents are told the two actions are called. "standard" is every run
+# before 2026-10: the game's own labels. "neutral" shows two bare letters with
+# no meaning and no order, to test whether a result rests on loaded words
+# ("Cooperate", "Defect") rather than on the game. Only the words the agents
+# read and write change. The payoffs, which action sits first in the table, and
+# the labels stored in the run record -- always the game's own -- stay as they
+# are, so every analysis script reads both kinds of run unchanged.
+ACTION_LABEL_SCHEMES: dict[str, tuple[str, str] | None] = {
+    "standard": None,
+    "neutral": ("J", "F"),
+}
+
+
+def surface_labels(game: Game, scheme: str = "standard") -> tuple[str, str]:
+    """The two action names an agent reads and writes under `scheme`."""
+    if scheme not in ACTION_LABEL_SCHEMES:
+        raise ValueError(f"Unknown action-label scheme {scheme!r}; "
+                         f"choose from {sorted(ACTION_LABEL_SCHEMES)}")
+    return ACTION_LABEL_SCHEMES[scheme] or game.action_labels

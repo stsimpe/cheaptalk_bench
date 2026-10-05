@@ -42,11 +42,16 @@ def format_history(
     agent_id: int,
     agent_ids_of_neighbors: list[int],
     memory_window: int = 10,
+    shown: dict[str, str] | None = None,
 ) -> str:
     """Render the interaction history for this agent.
 
     Only the last `memory_window` rounds are included (Sabani §4.1.4). The
     agent only sees actions/messages involving itself or its neighbors.
+
+    `shown` maps the game's action labels, which the record stores, to the
+    names this agent was offered (games.ACTION_LABEL_SCHEMES). None -- every
+    run before 2026-10 -- prints the record's labels as they are.
 
     history is a list of per-round dicts:
       { "round": int,
@@ -74,10 +79,14 @@ def format_history(
         round_num = r["round"]
         lines.append(f"--- Round {round_num} ---")
         my_action = r["actions"].get(agent_id)
+        if shown:
+            my_action = shown.get(my_action, my_action)
         my_payoff = r["payoffs"].get(agent_id)
         lines.append(f"You chose: {my_action}  (payoff this round: {my_payoff})")
         for nb in agent_ids_of_neighbors:
             nb_action = r["actions"].get(nb)
+            if shown:
+                nb_action = shown.get(nb_action, nb_action)
             lines.append(f"Neighbor #{nb} chose: {nb_action}")
         if "messages_seen_by" in r and r["messages_seen_by"]:
             msgs_seen = r["messages_seen_by"].get(agent_id, {})
@@ -218,6 +227,7 @@ def build_system_prompt(
     topology_text: str | None = None,
     context_framing_text: str = "",
     communication_text: str | None = None,
+    action_labels: tuple[str, str] | None = None,
 ) -> str:
     # topology_text comes from topology.describe(agent_id); the fallback keeps
     # old call sites (and the 380 star runs) byte-identical.
@@ -226,12 +236,16 @@ def build_system_prompt(
     # (the default) leaves the system prompt byte-identical to the old one.
     if context_framing_text:
         topology = f"{topology}\n\n{context_framing_text}"
-    payoff_matrix = game.describe_payoffs()
+    # action_labels renames the actions in the table, the list of choices and
+    # the response format; None keeps the game's own names, as in every run
+    # before 2026-10.
+    payoff_matrix = game.describe_payoffs(action_labels)
+    action_a, action_b = action_labels or game.action_labels
     kwargs = dict(
         topology=topology,
         payoff_matrix=payoff_matrix,
-        action_a=game.action_labels[0],
-        action_b=game.action_labels[1],
+        action_a=action_a,
+        action_b=action_b,
     )
     if condition == "no_comm":
         return NO_COMM_SYSTEM.format(**kwargs)

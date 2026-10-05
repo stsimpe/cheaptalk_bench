@@ -73,6 +73,9 @@ class GameEngine:
                     ),
                     noise_seed=self.cfg.seed + run_id,
                     action_retries=getattr(self.cfg, "action_retries", 0),
+                    # Opt-in (default "standard"): rename the two actions in
+                    # every prompt; the record keeps the game's own labels.
+                    action_labels=getattr(self.cfg, "action_labels", "standard"),
                 )
             )
         return agents

@@ -362,7 +362,8 @@ def collect_trajectories(roots: list[str]):
         # two prompt generations into one line.
         cell = cell_label(summary["scenario"], summary["condition"],
                           cfg.get("message_filter", "none"),
-                          bool(cfg.get("topology_aware_comm_prompt", False)))
+                          bool(cfg.get("topology_aware_comm_prompt", False)),
+                          action_labels=cfg.get("action_labels", "standard"))
         topology = summary["topology"]
         game_name = cfg.get("game")
         if game_name not in GAMES:

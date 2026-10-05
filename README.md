@@ -16,7 +16,8 @@ PD cells in all five models, and the harm-source experiments isolate where the
 adversarial damage is produced. Every research question is answered on three
 topologies. Next, from October 2026: steps 12–14 of `kaggle_harm_source.ipynb`,
 which ask whether a message acts through the agent that writes it or through
-the agents that read it.
+the agents that read it, and `kaggle_neutral_labels.ipynb`, which reruns the
+core cells with the two actions called J and F instead of Cooperate and Defect.
 
 ## The research questions, and what the corpus says
 
@@ -50,7 +51,10 @@ run ordering, not sampling, so replicates are genuine independent samples.
 
 Every additive knob defaults to the pre-existing behaviour, so any old run
 reproduces byte-for-byte: `context_framing`, `message_filter`, `action_retries`,
-`topology_aware_comm_prompt`.
+`topology_aware_comm_prompt`, `hide_own_message`, `policy_agents`,
+`action_labels`. The last renames the two actions in every prompt (`neutral`:
+J / F) while the run record keeps the game's own labels, so the analysis reads
+both kinds of run unchanged; its cells carry a `+neutral` tag on both arms.
 
 ## Layout
 
@@ -123,6 +127,7 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 | `kaggle_clique_bc.ipynb` | steps 9–22: sessions B and C (the six framing cells) on the clique, PD, all five models — done | `campaign.py` |
 | `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`) and with one instructed writer among three neutral agents (`--policy-agents 0`). Steps 1–11 — done, 100 runs in `harm_source/`: the star cells, the one-writer cell on the clique, and the cell that withholds the author's own message from it. Steps 12–14 — **next**: does a message act through its speaker or its listeners? Ordinary talk with the author's own message withheld (`baseline_hideown`) or with nothing delivered (`baseline_block_all`), and the competitive frame delivered with the author's message withheld (`competitive_hideown`); star, PD, five models, decision rules written into the notebook before the run | `campaign.py` |
 | `kaggle_ring_competitive.ipynb` | the ring's two competitive cells re-run with the corrected prompt — the cells RQ3 and RQ4 rest on, which the session-A ablation did not cover — done | `campaign.py` |
+| `kaggle_neutral_labels.ipynb` | **next**: `no_comm`, `baseline_cheap_talk` and `framing_competitive` with the actions renamed J / F (`--action-labels neutral`), star, PD; one step per model (Qwen2.5, Llama, optionally Qwen3-4B) so they can run on separate accounts; decision rules written into the notebook before the run | `campaign.py` |
 | `kaggle_judge.ipynb` | the deception judge over the PD corpus — done for all three topologies, 38,275 judged messages | `llm_judge.py` |
 
 **Why the gemma-2-2b star was re-measured.** gemma-2-2b is the one model whose ring cooperates less than its

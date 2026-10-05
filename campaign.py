@@ -32,6 +32,8 @@ import time
 import zipfile
 from collections import Counter
 
+from games import ACTION_LABEL_SCHEMES
+
 
 # Scenario groups. Session A is the four "core" scenarios, session B the three
 # framings; splitting them keeps every session inside the Kaggle time budget.
@@ -93,7 +95,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
          comm_fix: bool = False,
          conditions: list[str] | None = None,
          policy_agents: list[int] | None = None,
-         hide_own: bool = False) -> dict:
+         hide_own: bool = False,
+         action_labels: str = "standard") -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -141,6 +144,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         result_dir = f"{result_dir}_{agents_tag}"
     if hide_own:
         result_dir = f"{result_dir}_hideown"
+    if action_labels != "standard":
+        result_dir = f"{result_dir}_{action_labels}"
     if expected_runs(scenarios, n_runs, len(games), conditions) == 0:
         raise SystemExit(f"{scenarios} have no {conditions} arm -- nothing would run.")
     zip_name = f"{short}_{topology}_session{session}"
@@ -156,6 +161,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         zip_name += f"_{agents_tag}"
     if hide_own:
         zip_name += "_hideown"
+    if action_labels != "standard":
+        zip_name += f"_{action_labels}"
     return {
         "model": model, "session": session, "topology": topology,
         "scenarios": scenarios, "n_runs": n_runs, "n_rounds": n_rounds,
@@ -164,6 +171,7 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         "conditions": conditions,
         "policy_agents": policy_agents,
         "hide_own": hide_own,
+        "action_labels": action_labels,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
         "expected_runs": expected_runs(scenarios, n_runs, len(games), conditions),
@@ -197,6 +205,8 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
         cmd += ["--policy-agents", *[str(a) for a in p["policy_agents"]]]
     if p.get("hide_own"):
         cmd += ["--hide-own-message"]
+    if p.get("action_labels", "standard") != "standard":
+        cmd += ["--action-labels", p["action_labels"]]
     cmd += ["--scenarios", *p["scenarios"]]
     return cmd
 
@@ -310,6 +320,11 @@ def main() -> int:
                     choices=["no_comm", "cheap_talk"],
                     help="Run only these arms, e.g. extra no_comm replicates. "
                          "Output lands in its own tree (suffix _nocomm).")
+    ap.add_argument("--action-labels", default="standard",
+                    choices=sorted(ACTION_LABEL_SCHEMES),
+                    help="What the agents are told the two actions are called: "
+                         "'neutral' shows J/F with the same payoffs. Both arms "
+                         "are affected. Own tree (suffix _neutral).")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
@@ -325,7 +340,7 @@ def main() -> int:
              games=args.games, message_filter=args.message_filter,
              comm_fix=args.topology_aware_comm_prompt,
              conditions=args.conditions, policy_agents=args.policy_agents,
-             hide_own=args.hide_own_message)
+             hide_own=args.hide_own_message, action_labels=args.action_labels)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)
@@ -348,6 +363,11 @@ def main() -> int:
               f"the rest write ordinary messages -> {p['result_dir']}")
     if p.get("hide_own"):
         print(f"OWN MESSAGE  : hidden from its writer in the action phase "
+              f"-> {p['result_dir']}")
+    if p.get("action_labels", "standard") != "standard":
+        names = " / ".join(ACTION_LABEL_SCHEMES[p["action_labels"]])
+        print(f"LABELS       : {p['action_labels']} -- the agents read {names} for the "
+              f"two actions, both arms; the record keeps the game's labels "
               f"-> {p['result_dir']}")
     print(f"expecting    : {p['expected_runs']} run files")
     print(f"results ->   : {p['result_dir']}")

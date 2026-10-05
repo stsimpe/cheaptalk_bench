@@ -41,6 +41,10 @@ import pandas as pd
 # Pull in the per-run metrics function from analysis.py.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from analysis import summarise_run
+from games import ACTION_LABEL_SCHEMES
+
+# Label schemes other than the game's own; each is a tag on the cell label.
+RENAMED_LABELS = {s for s in ACTION_LABEL_SCHEMES if s != "standard"}
 
 
 # ---------- Scenario normalisation ----------
@@ -183,7 +187,8 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
                                cfg.get("message_filter", "none"),
                                bool(cfg.get("topology_aware_comm_prompt", False)),
                                cfg.get("policy_agents"),
-                               bool(cfg.get("hide_own_message", False))),
+                               bool(cfg.get("hide_own_message", False)),
+                               action_labels=cfg.get("action_labels", "standard")),
             "framing_type": cfg.get("framing_type", ""),
             # In the master table too, so a mixed cell is visible after the
             # fact instead of only at grouping time.
@@ -204,7 +209,8 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
 def cell_label(scenario: str, condition: str,
                message_filter: str = "none", comm_fix: bool = False,
                policy_agents: list | None = None,
-               hide_own: bool = False) -> str:
+               hide_own: bool = False,
+               action_labels: str = "standard") -> str:
     """Unique label for one experimental cell.
 
     A cell is an experimental condition, so anything that changes the
@@ -232,10 +238,20 @@ def cell_label(scenario: str, condition: str,
     split one experiment into `no_comm` and `no_comm+commfix`: the first bug
     mirrored, a silent split instead of a silent merge, and it fragmented the
     anchor that every delta below is measured against.
+
+    Renamed action labels are the opposite case and are tagged on BOTH arms:
+    the names are in the payoff table and the history of a `no_comm` prompt
+    too, and the record keeps the game's own labels, so without the tag a
+    neutral-label run would be indistinguishable from a standard one. Its
+    closed arm, `no_comm+neutral`, is the anchor of the neutral cells only
+    (anchor_cell below).
     """
     label = f"{scenario}[{condition}]" if scenario.endswith("_context") else scenario
+    renamed = action_labels if action_labels in RENAMED_LABELS else ""
+    if action_labels and action_labels != "standard" and not renamed:
+        raise ValueError(f"unknown action-label scheme {action_labels!r}")
     if condition != "cheap_talk":
-        return label
+        return f"{label}+{renamed}" if renamed else label
     tags = []
     if message_filter and message_filter != "none":
         # F3_relative_gain -> F3; block_all keeps its name, it is not a lexicon
@@ -250,7 +266,21 @@ def cell_label(scenario: str, condition: str,
         tags.append("agents" + "".join(str(a) for a in sorted(policy_agents)))
     if hide_own:
         tags.append("hideown")
+    if renamed:
+        tags.append(renamed)
     return f"{label}+{'+'.join(tags)}" if tags else label
+
+
+def anchor_cell(cell: str) -> str:
+    """The closed arm a cell's delta is measured against.
+
+    `no_comm` for every cell, except one whose agents read renamed action
+    labels: that is measured against the `no_comm` that read the same names
+    (`no_comm+neutral`). Anchoring it on the standard closed arm would fold
+    the effect of the names into the effect of the channel.
+    """
+    renamed = [t for t in cell.split("+")[1:] if t in RENAMED_LABELS]
+    return f"no_comm+{renamed[0]}" if renamed else "no_comm"
 
 
 def base_cell(cell: str) -> str:
@@ -314,16 +344,28 @@ def compute_deltas(master: pd.DataFrame) -> pd.DataFrame:
     rows = []
     has_gen = "comm_prompt" in master.columns
     for (model, topology, game), sub in master.groupby(["model_id", "topology", "game"]):
-        anchor_pool = sub[sub["cell"] == "no_comm"]
-        if anchor_pool["coop_rate_overall"].dropna().empty:
-            # Not an error -- a campaign split over sessions has open cells
-            # before its baseline session lands -- but never silent: a delta
-            # table missing half an experiment looks complete otherwise.
-            print(f"[note] no no_comm anchor for {model} / {topology} / {game}: "
-                  f"{sub['cell'].nunique()} cell(s) left out of the deltas")
-            continue
+        # One anchor per label scheme: `no_comm`, and `no_comm+neutral` for
+        # the cells whose agents read renamed actions (anchor_cell).
+        pools: dict[str, pd.DataFrame | None] = {}
         for cell, sc_sub in sub.groupby("cell"):
-            if cell == "no_comm":
+            anchor_name = anchor_cell(cell)
+            if cell == anchor_name:
+                continue
+            if anchor_name not in pools:
+                pool = sub[sub["cell"] == anchor_name]
+                if pool["coop_rate_overall"].dropna().empty:
+                    # Not an error -- a campaign split over sessions has open
+                    # cells before its baseline session lands -- but never
+                    # silent: a delta table missing half an experiment looks
+                    # complete otherwise.
+                    left_out = sum(anchor_cell(c) == anchor_name and c != anchor_name
+                                   for c in sub["cell"].unique())
+                    print(f"[note] no {anchor_name} anchor for {model} / {topology} / {game}: "
+                          f"{left_out} cell(s) left out of the deltas")
+                    pool = None
+                pools[anchor_name] = pool
+            anchor_pool = pools[anchor_name]
+            if anchor_pool is None:
                 continue
             ct_vals = sc_sub["coop_rate_overall"].dropna().values
             if len(ct_vals) == 0:

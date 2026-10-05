@@ -21,7 +21,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from games import Game
+from games import Game, surface_labels
 from llm_client import LLMClient
 from message_policies import (
     apply_filter,
@@ -161,6 +161,7 @@ class Agent:
     communication_text: str | None = None  # per-topology routing sentence (None = legacy star)
     noise_seed: int = 0               # varies per run; feeds the no_sense RNG
     action_retries: int = 0           # resample once (or more) when the action is invalid
+    action_labels: str = "standard"   # what the two actions are called in the prompt (games.ACTION_LABEL_SCHEMES)
     # Every LLM call of the current round: raw text, token counts, finish
     # reason, whether parsing failed. The engine drains it into the record.
     _calls: list = field(default_factory=list, repr=False)
@@ -186,12 +187,22 @@ class Agent:
             topology_text=self.topology_text,
             context_framing_text=get_context_framing_paragraph(self.context_framing),
             communication_text=self.communication_text,
+            action_labels=self._offered(),
         )
 
+    def _offered(self) -> tuple[str, str] | None:
+        """The action names this agent is shown; None means the game's own,
+        as in every run before 2026-10."""
+        if self.action_labels == "standard":
+            return None
+        return surface_labels(self.game, self.action_labels)
+
     def _history_text(self, history: list[dict]) -> str:
+        offered = self._offered()
         return format_history(
             history, self.agent_id, self.neighbor_ids,
             memory_window=self.memory_window,
+            shown=dict(zip(self.game.action_labels, offered)) if offered else None,
         )
 
     def _safe_extract(self, raw: str, expected_field: str) -> tuple[dict, bool]:
@@ -313,6 +324,9 @@ class Agent:
         NOT silently substitute because invalid-rate is a metric we care about
         (following Sabani §4.1.4).
         """
+        offered = self._offered()
+        if offered is not None:
+            return self._canonicalize_offered(raw, offered)
         a, b = self.game.action_labels
         low = raw.lower().strip().strip(".,\"'")
         if not low:
@@ -327,3 +341,25 @@ class Agent:
         if low in {b[0].lower(), b.lower()[:4]}:
             return b
         return raw  # invalid — engine will record and skip update
+
+    def _canonicalize_offered(self, raw: str, offered: tuple[str, str]) -> str:
+        """Map an answer given in the offered names back to the game's label.
+
+        The record keeps the game's own labels whatever the agents were shown,
+        so the payoffs and every analysis script stay as they are. Matching is
+        stricter than for the standard names, whose prefix and shorthand rules
+        would let a one-letter label swallow any word that starts with it: the
+        label has to stand as a word of its own ("J", "j.", "Option J",
+        "F (defect)"), so "just" or "final" never count.
+
+        An answer naming neither offered label is recorded as the empty
+        string, as an empty output already is. That includes the game's own
+        word ("Cooperate"), which only the model can have brought into the
+        game: the raw text stays in llm_calls, and the history the agents read
+        back never echoes a name the prompt did not offer.
+        """
+        low = raw.lower().strip().strip(".,\"'<>()[]{}* ")
+        for label, own in zip(offered, self.game.action_labels):
+            if re.match(rf"(?:option|action)?\s*{re.escape(label.lower())}\b", low):
+                return own
+        return ""
