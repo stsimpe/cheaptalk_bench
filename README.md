@@ -9,7 +9,7 @@ round, applied across all of its edges. In the cheap-talk condition every round
 has two phases: all agents send one free-form sentence along their edges, *then*
 everyone chooses an action. Messages are costless and non-binding.
 
-**State: 2,170 runs, data collection for this stage complete.** The grid
+**State: 2,245 runs, data collection for this stage complete.** The grid
 (1,520) is done, the corrected-prompt ablation and the targeted ring re-run
 have closed the prompt bug where it carries a claim, the clique covers all 14
 PD cells in all five models, and the harm-source experiments isolate where the
@@ -108,7 +108,7 @@ run folders: `{gemma-2-2b-it,gemma-2-9b-it,Llama-3.1-8B-Instruct,Qwen2.5-7B-Inst
 | the recorded data itself: payoffs, delivery, invariants, duplicates | `python audit_corpus.py <run folders>` |
 | invalid-decision sensitivity of the ledger | `python anchor_sensitivity.py --in-dir cross_model_output_final` |
 | attractor shares, Fisher + Holm | `python attractors.py --roots <ten>` |
-| where the adversarial harm is produced | `python harm_source_report.py --harm-dir harm_source --grid-root <project root>` |
+| where the adversarial harm is produced, and which of its two routes carries it | `python harm_source_report.py --harm-dir harm_source --grid-root <project root> --rq4-dir rq4` |
 | hub leadership, lagged test | `python hub_lag_test.py --roots <the five star folders>` |
 | star vs ring vs clique, per RQ | `python topology_compare.py --star <star> --ring <cycle> --ring-fix <cycle_commfix> --clique <clique>` |
 | the three-topology figure | `python topology_three_plot.py --star <star> --ring <cycle_commfix> --clique <clique> --out figures/topology_three_pd.png` |

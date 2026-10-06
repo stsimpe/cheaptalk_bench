@@ -92,10 +92,59 @@ def line(label: str, values: list[float]) -> str:
     return f"{label:34s}" + "".join(f"{v:8.2f}" for v in values)
 
 
+def runs_coop(root: str) -> list[float]:
+    return [summarise_run(r)["coop_rate_overall"] for r in records(root)]
+
+
+def grid_runs_coop(grid_root: str, model: str, topology: str, scenario: str,
+                   condition: str = "cheap_talk") -> list[float]:
+    root = os.path.join(grid_root, f"{model}_{topology}", scenario, condition)
+    return [summarise_run(json.load(open(p, encoding="utf-8")))["coop_rate_overall"]
+            for p in glob.glob(f"{root}/*_pd_*.json")]
+
+
+def round1(paths_or_root) -> tuple[int, int]:
+    """Cooperating and valid decisions in round 1 only.
+
+    Round 1 is where the history is empty, so between two cells that differ
+    only in the quoted own message it is the one place where that quotation
+    is the sole difference in what the model is shown.
+    """
+    coop = valid = 0
+    recs = (records(paths_or_root) if isinstance(paths_or_root, str)
+            else paths_or_root)
+    for rec in recs:
+        for a in rec["history"][0]["actions"].values():
+            if a in VALID:
+                valid += 1
+                coop += a in GOOD
+    return coop, valid
+
+
+def grid_records(grid_root: str, model: str, topology: str, scenario: str,
+                 condition: str = "cheap_talk"):
+    root = os.path.join(grid_root, f"{model}_{topology}", scenario, condition)
+    for p in glob.glob(f"{root}/*_pd_*.json"):
+        with open(p, encoding="utf-8") as f:
+            yield json.load(f)
+
+
+def verdict(p: float) -> str:
+    """The rule fixed in kaggle_harm_source.ipynb before any of this ran."""
+    if p != p:
+        return "no data"
+    if p >= 0.75:
+        return "keeps the benefit"
+    if p <= 0.25:
+        return "falls to silence"
+    return "undecided"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--harm-dir", default="harm_source")
     ap.add_argument("--grid-root", default=".")
+    ap.add_argument("--rq4-dir", default="rq4")
     args = ap.parse_args()
     H, G = args.harm_dir, args.grid_root
 
@@ -138,6 +187,91 @@ def main():
             print(f"{m:22s}{w:8.2f}{r:9.2f}{base:10.2f}{c:16.2f}{d:16.2f}")
         print("  (baseline cheap talk is the cell where every agent writes ordinary "
               "messages)")
+
+    print()
+    print("=" * 78)
+    print("3. Speaker or listener?  (PD, star, steps 12-14)")
+    print("=" * 78)
+    print("Rules fixed before these cells ran:")
+    print("  p = (cell - silence10) / (baseline - silence10);  >=0.75 keeps the")
+    print("  benefit, <=0.25 falls to silence, between is undecided.  A claim")
+    print("  needs 3 of Llama, Qwen2.5, gemma-2-2b, gemma-2-9b; Qwen3-4B is")
+    print("  reported but not counted (its silence is already high).")
+    print()
+
+    NEW = {"ordinary, own hidden": "_cheaptalk_hideown",
+           "ordinary, none delivered": "_block_all_cheaptalk",
+           "competitive, own hidden": "_hideown"}
+    counted = ["Llama-3.1-8B-Instruct", "Qwen2.5-7B-Instruct",
+               "gemma-2-2b-it", "gemma-2-9b-it"]
+    verdicts = defaultdict(list)
+
+    for m in MODELS:
+        base = st.fmean(grid_runs_coop(G, m, "star", "baseline"))
+        sil10 = grid_runs_coop(G, m, "star", "silence") + \
+            runs_coop(f"{H}/{m}_block_all_hideown")
+        sil = st.fmean(sil10)
+        fc10 = grid_runs_coop(G, m, "star", "framing_competitive") + \
+            [summarise_run(r)["coop_rate_overall"]
+             for r in records(f"{args.rq4_dir}/replicates_n10/{m}")]
+        mark = "" if m in counted else "   (not counted)"
+        print(f"{m}{mark}")
+        print(f"   anchors: baseline {base:.2f}   silence(n={len(sil10)}) "
+              f"{sil:.2f}   competitive(n={len(fc10)}) {st.fmean(fc10):.2f}")
+        for label, suffix in NEW.items():
+            v = runs_coop(f"{H}/{m}{suffix}")
+            if not v:
+                continue
+            mean = st.fmean(v)
+            p = (mean - sil) / (base - sil) if base != sil else float("nan")
+            c, n = round1(f"{H}/{m}{suffix}")
+            print(f"   {label:26s} {mean:.2f}  p={p:+.2f}  {verdict(p):18s}"
+                  f" round1 {c}/{n} = {c / n:.2f}" if n else "")
+            if m in counted:
+                verdicts[label].append(verdict(p))
+        print()
+
+    print("Verdict count over the four counted models:")
+    for label in NEW:
+        tally = {v: verdicts[label].count(v) for v in set(verdicts[label])}
+        print(f"   {label:26s} {tally}")
+
+    print()
+    print("Round 1 pooled, where the quotation is the only difference:")
+    try:
+        from scipy.stats import fisher_exact
+    except ImportError:
+        fisher_exact = None
+    pools = {
+        "silence": [r for m in MODELS
+                    for r in grid_records(G, m, "star", "silence")],
+        "competitive, delivered": [r for m in MODELS
+                                   for r in grid_records(G, m, "star",
+                                                         "framing_competitive")],
+        "competitive, own hidden": [r for m in MODELS
+                                    for r in records(f"{H}/{m}_hideown")],
+        "competitive, none delivered": [r for m in MODELS
+                                        for r in records(f"{H}/{m}_block_all")],
+        "ordinary, delivered": [r for m in MODELS
+                                for r in grid_records(G, m, "star", "baseline")],
+        "ordinary, own hidden": [r for m in MODELS
+                                 for r in records(f"{H}/{m}_cheaptalk_hideown")],
+        "ordinary, none delivered": [r for m in MODELS
+                                     for r in records(f"{H}/{m}_block_all_cheaptalk")],
+    }
+    counts = {k: round1(v) for k, v in pools.items()}
+    for k, (c, n) in counts.items():
+        print(f"   {k:30s} {c:4d}/{n:4d} = {c / n:.2f}" if n else f"   {k}: none")
+    if fisher_exact:
+        print("\n   Fisher, two-sided:")
+        for a, b in [("competitive, own hidden", "competitive, delivered"),
+                     ("competitive, own hidden", "silence"),
+                     ("competitive, own hidden", "competitive, none delivered"),
+                     ("ordinary, own hidden", "ordinary, delivered"),
+                     ("ordinary, none delivered", "ordinary, delivered")]:
+            (ca, na), (cb, nb) = counts[a], counts[b]
+            _, p = fisher_exact([[ca, na - ca], [cb, nb - cb]])
+            print(f"   {a} vs {b}: p = {p:.2g}")
 
 
 if __name__ == "__main__":
