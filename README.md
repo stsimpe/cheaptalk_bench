@@ -81,7 +81,7 @@ both kinds of run unchanged; its cells carry a `+neutral` tag on both arms.
 ├── rq4_filter_plot.py     the RQ4 figure
 ├── verify_prompt_bug.py   the four log-only checks of the prompt bug
 ├── commfix_report.py      the ablation, judged against a noise floor
-├── kaggle_*.ipynb         the nine campaign notebooks (all call campaign.py)
+├── kaggle_*.ipynb         the campaign notebooks (all but the judge call campaign.py)
 ├── cross_model_output_final/  the released CSVs behind every number
 ├── figures/               the released figures
 ├── notebooks/             proposals for the next stage: clique, mixed
@@ -126,6 +126,7 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 | `kaggle_clique.ipynb` | steps 2–8: the clique for the other four models, one model per session — done | `campaign.py` |
 | `kaggle_clique_bc.ipynb` | steps 9–22: sessions B and C (the six framing cells) on the clique, PD, all five models — done | `campaign.py` |
 | `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`) and with one instructed writer among three neutral agents (`--policy-agents 0`). Steps 1–11 — done, 100 runs in `harm_source/`: the star cells, the one-writer cell on the clique, and the cell that withholds the author's own message from it. Steps 12–14 — **next**: does a message act through its speaker or its listeners? Ordinary talk with the author's own message withheld (`baseline_hideown`) or with nothing delivered (`baseline_block_all`), and the competitive frame delivered with the author's message withheld (`competitive_hideown`); star, PD, five models, decision rules written into the notebook before the run | `campaign.py` |
+| `kaggle_clique_sh.ipynb` | **next**: the Stag Hunt on the clique, the 14 cells of the PD clique, five models, 350 runs in seven steps; two models at a time, one per T4 (`CUDA_VISIBLE_DEVICES`), so a step costs about half the session hours; reading rules written into the notebook before the run | `campaign.py` |
 | `kaggle_ring_competitive.ipynb` | the ring's two competitive cells re-run with the corrected prompt — the cells RQ3 and RQ4 rest on, which the session-A ablation did not cover — done | `campaign.py` |
 | `kaggle_neutral_labels.ipynb` | **next**: `no_comm`, `baseline_cheap_talk` and `framing_competitive` with the actions renamed J / F (`--action-labels neutral`), star, PD; one step per model (Qwen2.5, Llama, optionally Qwen3-4B) so they can run on separate accounts; decision rules written into the notebook before the run | `campaign.py` |
 | `kaggle_judge.ipynb` | the deception judge over the PD corpus — done for all three topologies, 38,275 judged messages | `llm_judge.py` |
