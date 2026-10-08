@@ -17,19 +17,47 @@ For each completed run we compute metrics that map to specific RQs:
     - hub_exploitation_rate: in cheap-talk PD specifically, how often
       does the hub defect after sending a cooperative-sounding message?
 
-This module is a LIBRARY, not a command. Two functions are its whole public
-surface -- `scenario_of(record)` and `summarise_run(record)` -- and six modules
-import them, `cross_model_analysis.py` first among them. The single-model CLI
-and the keyword analysis that used to live here were removed on 2026-09-20/21;
-the note at the foot of the file says why.
+This module is a LIBRARY, not a command. Its public surface is
+`scenario_of(record)` and `summarise_run(record)` -- six modules import them,
+`cross_model_analysis.py` first among them -- and `model_dir(root, model,
+topology)`, which finds a model's run folder under either folder layout. The
+single-model CLI and the keyword analysis that used to live here were removed
+on 2026-09-20/21; the note at the foot of the file says why.
 
-    from analysis import summarise_run, scenario_of
+    from analysis import summarise_run, scenario_of, model_dir
 """
 from __future__ import annotations
 
+import os
 from statistics import mean
 
 from games import GAMES
+
+
+# ---------- Locating run folders ----------
+
+# On 2026-10-08 the model folders were regrouped by topology:
+# <root>/star_runs/<model>_star, <root>/cycle_runs/<model>_cycle, ... Before
+# that they sat directly in the project root.
+TOPOLOGY_FOLDERS = {"star": "star_runs", "cycle": "cycle_runs",
+                    "clique": "clique_runs", "line": "line_runs"}
+
+
+def model_dir(root: str, model: str, topology: str) -> str:
+    """The run folder `<model>_<topology>` under `root`, in either layout.
+
+    `root` may be the project root with topology folders, the project root of
+    the old flat layout, or a topology folder itself. The first candidate that
+    exists wins. When none does, the topology-folder path is returned, so the
+    caller sees an empty folder; callers that must not run on missing data
+    check `os.path.isdir()` and stop.
+    """
+    name = f"{model}_{topology}"
+    grouped = os.path.join(root, TOPOLOGY_FOLDERS.get(topology, f"{topology}_runs"), name)
+    for candidate in (grouped, os.path.join(root, name)):
+        if os.path.isdir(candidate):
+            return candidate
+    return grouped
 
 
 # ---------- Loading ----------

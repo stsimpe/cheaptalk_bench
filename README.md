@@ -9,26 +9,24 @@ round, applied across all of its edges. In the cheap-talk condition every round
 has two phases: all agents send one free-form sentence along their edges, *then*
 everyone chooses an action. Messages are costless and non-binding.
 
-**State: 2,245 runs, data collection for this stage complete.** The grid
-(1,520) is done, the corrected-prompt ablation and the targeted ring re-run
-have closed the prompt bug where it carries a claim, the clique covers all 14
-PD cells in all five models, and the harm-source experiments isolate where the
-adversarial damage is produced. Every research question is answered on three
-topologies. Next, from October 2026: steps 12–14 of `kaggle_harm_source.ipynb`,
-which ask whether a message acts through the agent that writes it or through
-the agents that read it, and `kaggle_neutral_labels.ipynb`, which reruns the
-core cells with the two actions called J and F instead of Cooperate and Defect.
+**State: 2,610 runs, data collection for this stage complete.** The grid
+(1,420) and the RQ4 runs (100) are done; the corrected-prompt ablation and the
+targeted ring re-run have closed the prompt bug where it carries a claim; the
+clique covers all 14 cells in all five models in both games (700 runs, the
+Stag Hunt added in October); and the harm-source experiments, steps 1-15,
+isolate where the adversarial damage is produced and which route carries it.
+Every research question is answered on three topologies. Since 2026-10-08 the
+run folders sit in topology folders at the project root: `star_runs/`,
+`cycle_runs/`, `clique_runs/` (`harm_source/` and `rq4/` unchanged).
 
 ## The research questions, and what the corpus says
 
 | | question | answer |
 |---|---|---|
 | **RQ1** Direction | does cheap talk push toward cooperative or harmful equilibria? | **helpful**: 0 of 50 meaningful-content PD cells fall below their own silent anchor; talk works by stopping decay, not by building cooperation |
-| **RQ2** Topology | does network structure modulate the effect? do hubs steer outcomes? | **degree 1 is the exposed position, and nothing beyond it**: over three topologies the star is lowest in 12 of 15 low-communication PD cells (ring − star p = 0.007, clique − star p = 0.035, clique − ring p = 1.00); monotone star < ring < clique in only 6 of 15, so experience dilution has no dose-response. The hub is not a point of collapse (hub − leaf ∈ [−0.00, +0.05]), but leaves respond to it more than it responds to them in 2 of 5 models (`hub_lag_test.py`) |
+| **RQ2** Topology | does network structure modulate the effect? do hubs steer outcomes? | **degree 1 is the exposed position, and nothing beyond it**: over three topologies the star is lowest in 12 of 15 low-communication PD cells (ring − star p = 0.007, clique − star p = 0.035, clique − ring p = 1.00); monotone star < ring < clique in only 6 of 15, so experience dilution has no dose-response. The hub is not a point of collapse (hub − leaf ∈ [−0.00, +0.05]), but leaves respond to it more than it responds to them in 2 of 5 models (`hub_lag_test.py`). In the Stag Hunt, where Stag is the best reply to any partner who hunts stag a third of the time, topology moves nothing: clique against ring 9-6, against star 7-8 (`clique_sh_report.py`) |
 | **RQ3** Channel separation | does a social frame act on disposition, on messages, or both? | **two dissociable routes, on every topology**: a team frame acts on disposition and makes talk redundant; a competitive frame acts through the message phase, and an open channel carrying ordinary talk raises a prompt frame in 41 of 45 model × topology × frame combinations and lands in 0.79–1.00 in 44 of 45 |
-| **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on both levers, with the mechanism isolated**: rewiring changes nothing on three topologies, and filtering fails because the harm has two sufficient routes — writing an adversarial message damages its author with nothing delivered (block-all ≈ the unfiltered cell), and reading one drags uninstructed agents from 0.98–1.00 to 0.24–0.67. A filter acts on delivery, so it removes one of two. The mechanism is narrower still: what damages the author
-is its own message *persisting in its context at decision time* -- withholding
-it recovers +0.23 on average, one model from 0.03 to 0.89 |
+| **RQ4** Intervention | can the protocol or the network be changed to keep the benefit and lose the harm? | **negative on every lever tested**: rewiring changes nothing on three topologies, and the harm has two routes, each sufficient alone -- the agent re-reading its own adversarial message (block-all, nothing delivered, ≈ the unfiltered cell; round 1: 0.26 with the quotation, 0.80 without, in all five models) and the agents reading their neighbours' (round 1: 0.40 against 0.78 for silence). A filter acts on delivery and withholding the writer's own message acts on the other route, so each leaves the harm in place; withholding costs ordinary talk nothing but is no defence. A defence has to act on the meaning of what is delivered |
 
 Heterogeneous populations, which occupied the RQ3 slot in an earlier version of
 this programme, were never run and are stated as future work.
@@ -74,6 +72,7 @@ both kinds of run unchanged; its cells carry a `+neutral` tag on both arms.
 ├── cross_model_analysis.py  JSONs -> master / aggregated / delta CSVs
 ├── cross_model_plots.py   the 21 figures, always per topology
 ├── harm_ledger.py         helpful-vs-harmful, each cell against its own anchor
+├── clique_sh_report.py    the Stag Hunt on the clique, by its pre-registered rules
 ├── message_corpus.py      every message joined to what its sender then did
 ├── filter_analysis.py     offline filter selectivity (which filter to run)
 ├── llm_judge.py           LLM-as-judge deception, with per-cell validation
@@ -92,7 +91,14 @@ both kinds of run unchanged; its cells carry a `+neutral` tag on both arms.
 ## One command per claim
 
 Every number in the thesis regenerates from the run files. `<ten>` is the ten
-run folders: `{gemma-2-2b-it,gemma-2-9b-it,Llama-3.1-8B-Instruct,Qwen2.5-7B-Instruct,Qwen3-4B}_{star,cycle}`.
+grid folders, `star_runs/<model>_star` and `cycle_runs/<model>_cycle` for the five
+models; `<star>`, `<cycle_commfix>` and `<clique>` are the matching folders in
+`star_runs/`, `cycle_runs/` and `clique_runs/`. **Pass them by name.** `star_runs/*`
+would also pull in `gemma-2-2b-it_star_commfix`, and `cycle_runs/*` the
+`_cycle_commfix` folders; their `no_comm` cells carry no generation label and
+would merge silently with the grid's. The two scripts that take a project root
+(`--root`, `--grid-root`) find the folders in either layout and stop if one is
+missing.
 
 | claim | command |
 |---|---|
@@ -109,6 +115,7 @@ run folders: `{gemma-2-2b-it,gemma-2-9b-it,Llama-3.1-8B-Instruct,Qwen2.5-7B-Inst
 | invalid-decision sensitivity of the ledger | `python anchor_sensitivity.py --in-dir cross_model_output_final` |
 | attractor shares, Fisher + Holm | `python attractors.py --roots <ten>` |
 | where the adversarial harm is produced, and which of its two routes carries it | `python harm_source_report.py --harm-dir harm_source --grid-root <project root> --rq4-dir rq4` |
+| the Stag Hunt on the clique, by the rules fixed before it ran (ledger replication, topology, invalid cells) | `python clique_sh_report.py --root <project root>` |
 | hub leadership, lagged test | `python hub_lag_test.py --roots <the five star folders>` |
 | star vs ring vs clique, per RQ | `python topology_compare.py --star <star> --ring <cycle> --ring-fix <cycle_commfix> --clique <clique>` |
 | the three-topology figure | `python topology_three_plot.py --star <star> --ring <cycle_commfix> --clique <clique> --out figures/topology_three_pd.png` |
@@ -125,10 +132,10 @@ On Windows, prefix with `PYTHONIOENCODING=utf-8`.
 | `kaggle_g2b_triad.ipynb` | gemma-2-2b re-measured on the star, plus its clique, with the no_comm anchor at n=10 on both — done; its ring comes from the ablation run | `campaign.py` |
 | `kaggle_clique.ipynb` | steps 2–8: the clique for the other four models, one model per session — done | `campaign.py` |
 | `kaggle_clique_bc.ipynb` | steps 9–22: sessions B and C (the six framing cells) on the clique, PD, all five models — done | `campaign.py` |
-| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from**: the competitive frame with nothing delivered (`block_all`) and with one instructed writer among three neutral agents (`--policy-agents 0`). Steps 1–11 — done, 100 runs in `harm_source/`: the star cells, the one-writer cell on the clique, and the cell that withholds the author's own message from it. Steps 12–14 — **next**: does a message act through its speaker or its listeners? Ordinary talk with the author's own message withheld (`baseline_hideown`) or with nothing delivered (`baseline_block_all`), and the competitive frame delivered with the author's message withheld (`competitive_hideown`); star, PD, five models, decision rules written into the notebook before the run | `campaign.py` |
-| `kaggle_clique_sh.ipynb` | **next**: the Stag Hunt on the clique, the 14 cells of the PD clique, five models, 350 runs in seven steps; two models at a time, one per T4 (`CUDA_VISIBLE_DEVICES`), so a step costs about half the session hours; reading rules written into the notebook before the run | `campaign.py` |
+| `kaggle_harm_source.ipynb` | **where the adversarial harm comes from** -- done, steps 1-15, 190 runs in `harm_source/`: the competitive frame with nothing delivered (`block_all`), with the author's own message withheld, and with one instructed writer among three neutral agents (`--policy-agents 0`, star and clique); steps 12-14 ask whether a message acts through its speaker or its listeners, and step 15 is the pre-registered n=10 top-up of ordinary talk with nothing delivered; decision rules written into the notebook before each run | `campaign.py` |
+| `kaggle_clique_sh.ipynb` | the Stag Hunt on the clique, the 14 cells of the PD clique, five models, 350 runs in seven steps -- done (2026-10-08); two models at a time, one per T4 (`CUDA_VISIBLE_DEVICES`), 59 h of work in ~34 h of sessions; reading rules written into the notebook before the run, applied by `clique_sh_report.py` | `campaign.py` |
 | `kaggle_ring_competitive.ipynb` | the ring's two competitive cells re-run with the corrected prompt — the cells RQ3 and RQ4 rest on, which the session-A ablation did not cover — done | `campaign.py` |
-| `kaggle_neutral_labels.ipynb` | **next**: `no_comm`, `baseline_cheap_talk` and `framing_competitive` with the actions renamed J / F (`--action-labels neutral`), star, PD; one step per model (Qwen2.5, Llama, optionally Qwen3-4B) so they can run on separate accounts; decision rules written into the notebook before the run | `campaign.py` |
+| `kaggle_neutral_labels.ipynb` | **built, not scheduled** (author's decision, 2026-10-05): `no_comm`, `baseline_cheap_talk` and `framing_competitive` with the actions renamed J / F (`--action-labels neutral`), star, PD; one step per model (Qwen2.5, Llama, optionally Qwen3-4B) so they can run on separate accounts; decision rules written into the notebook before the run | `campaign.py` |
 | `kaggle_judge.ipynb` | the deception judge over the PD corpus — done for all three topologies, 38,275 judged messages | `llm_judge.py` |
 
 **Why the gemma-2-2b star was re-measured.** gemma-2-2b is the one model whose ring cooperates less than its

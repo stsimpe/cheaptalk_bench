@@ -20,13 +20,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from analysis import summarise_run  # noqa: E402
+from analysis import model_dir, summarise_run  # noqa: E402
 
 MODELS = ["Llama-3.1-8B-Instruct", "Qwen2.5-7B-Instruct", "gemma-2-9b-it",
           "gemma-2-2b-it", "Qwen3-4B"]
 ARMS = [  # label, colour (fixed categorical order), marker, glob patterns
     ("unfiltered (n=10)", "#2a78d6", "o",
-     ["{m}_star/framing_competitive/cheap_talk/*.json",
+     ["{star}/framing_competitive/cheap_talk/*.json",
       "rq4/replicates_n10/{m}/framing_competitive/cheap_talk/*.json"]),
     ("F3, narrow filter", "#eb6834", "s",
      ["rq4/filtered_F3/{m}_F3_relative_gain/framing_competitive/cheap_talk/*.json"]),
@@ -36,9 +36,12 @@ ARMS = [  # label, colour (fixed categorical order), marker, glob patterns
 
 
 def coop_rates(root: str, patterns: list[str], model: str) -> list[float]:
+    # {star} is the model's grid folder on the star, in either folder layout
+    # (star_runs/<model>_star since 2026-10-08, <model>_star before).
+    star = os.path.relpath(model_dir(root, model, "star"), root)
     out = []
     for pat in patterns:
-        for p in sorted(glob.glob(os.path.join(root, pat.format(m=model)))):
+        for p in sorted(glob.glob(os.path.join(root, pat.format(m=model, star=star)))):
             with open(p, encoding="utf-8") as f:
                 rec = json.load(f)
             if rec["config"]["game"] == "pd":
@@ -64,6 +67,11 @@ def main() -> None:
             vals = coop_rates(args.root, pats, m)
             if not vals:
                 raise SystemExit(f"no runs for {m} / {label}")
+            # The control is labelled n=10: five grid runs plus five replicates.
+            # Without the grid folder it silently became n=5 (2026-10-08).
+            if label.startswith("unfiltered") and len(vals) != 10:
+                raise SystemExit(f"{m}: the unfiltered control has {len(vals)} runs, "
+                                 f"expected 10 -- is --root the project root?")
             x = i + (j - 1) * width
             jitter = np.linspace(-0.06, 0.06, len(vals))
             ax.scatter(x + jitter, vals, s=12, color=colour, alpha=0.45,

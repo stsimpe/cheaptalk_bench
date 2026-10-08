@@ -17,6 +17,10 @@ apart from ordinary reciprocity.
 
 Usage:
     python harm_source_report.py --harm-dir harm_source --grid-root .
+
+`--grid-root` is the project root. The grid folders are found in either
+layout, `<root>/star_runs/<model>_star` or `<root>/<model>_star`, and the
+report stops if one is missing rather than printing nan for its anchors.
 """
 from __future__ import annotations
 
@@ -27,7 +31,7 @@ import os
 import statistics as st
 from collections import defaultdict
 
-from analysis import summarise_run
+from analysis import model_dir, summarise_run
 
 MODELS = ["Llama-3.1-8B-Instruct", "Qwen2.5-7B-Instruct", "Qwen3-4B",
           "gemma-2-2b-it", "gemma-2-9b-it"]
@@ -52,7 +56,7 @@ def mean_coop(root: str) -> float:
 
 def cell(grid_root: str, model: str, topology: str, scenario: str,
          condition: str = "cheap_talk") -> float:
-    root = os.path.join(grid_root, f"{model}_{topology}", scenario, condition)
+    root = os.path.join(model_dir(grid_root, model, topology), scenario, condition)
     v = [summarise_run(json.load(open(p, encoding="utf-8")))["coop_rate_overall"]
          for p in glob.glob(f"{root}/*_pd_*.json")]
     return st.fmean(v) if v else float("nan")
@@ -98,7 +102,7 @@ def runs_coop(root: str) -> list[float]:
 
 def grid_runs_coop(grid_root: str, model: str, topology: str, scenario: str,
                    condition: str = "cheap_talk") -> list[float]:
-    root = os.path.join(grid_root, f"{model}_{topology}", scenario, condition)
+    root = os.path.join(model_dir(grid_root, model, topology), scenario, condition)
     return [summarise_run(json.load(open(p, encoding="utf-8")))["coop_rate_overall"]
             for p in glob.glob(f"{root}/*_pd_*.json")]
 
@@ -123,7 +127,7 @@ def round1(paths_or_root) -> tuple[int, int]:
 
 def grid_records(grid_root: str, model: str, topology: str, scenario: str,
                  condition: str = "cheap_talk"):
-    root = os.path.join(grid_root, f"{model}_{topology}", scenario, condition)
+    root = os.path.join(model_dir(grid_root, model, topology), scenario, condition)
     for p in glob.glob(f"{root}/*_pd_*.json"):
         with open(p, encoding="utf-8") as f:
             yield json.load(f)
@@ -147,6 +151,14 @@ def main():
     ap.add_argument("--rq4-dir", default="rq4")
     args = ap.parse_args()
     H, G = args.harm_dir, args.grid_root
+    # Every anchor below is read from the grid. A wrong --grid-root used to
+    # print nan for all of them without a word (2026-10-08, when the run
+    # folders moved into topology folders), so a missing folder now stops.
+    missing = [model_dir(G, m, t) for m in MODELS for t in ("star", "clique")
+               if not os.path.isdir(model_dir(G, m, t))]
+    if missing:
+        raise SystemExit(f"no grid folder for {len(missing)} model/topology pair(s), e.g. "
+                         f"{missing[0]} -- pass the project root as --grid-root")
 
     print("=" * 78)
     print("1. Does the harm need a reader?  (PD, star, cooperation rate)")
