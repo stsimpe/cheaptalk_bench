@@ -246,13 +246,19 @@ class LocalTransformersClient(LLMClient):
         # may spread one model over both cards, which buys no speed: the line
         # above names only the device of the first weight, so it cannot show
         # that. Printing only; nothing about generation changes.
+        # With a single card in view (CUDA_VISIBLE_DEVICES, as in
+        # kaggle_clique_sh.ipynb) transformers set no hf_device_map and the line
+        # never printed, so it now falls back to where the parameters sit.
         try:
+            from collections import Counter
             placed = getattr(self.model, "hf_device_map", None) or {}
             if placed:
-                from collections import Counter
-                spread = Counter(str(d) for d in placed.values())
-                print(f"[local] device map: {dict(spread)} "
-                      f"(modules per device; {torch.cuda.device_count()} GPU visible)")
+                spread, unit = Counter(str(d) for d in placed.values()), "modules"
+            else:
+                spread = Counter(str(p.device) for p in self.model.parameters())
+                unit = "parameter tensors"
+            print(f"[local] device map: {dict(spread)} "
+                  f"({unit} per device; {torch.cuda.device_count()} GPU visible)")
         except Exception:
             pass
 
