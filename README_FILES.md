@@ -43,6 +43,10 @@
 | kaggle_clique_bc.ipynb | Η clique στο Δίλημμα του Φυλακισμένου, sessions B και C: τα frames στα μηνύματα και στο prompt. |
 | kaggle_clique_sh.ipynb | Το Stag Hunt στην clique, με δύο μοντέλα παράλληλα σε κάθε session του Kaggle. |
 | kaggle_harm_source.ipynb | Τα στοχευμένα κελιά για την πηγή της βλάβης: τίποτα δεν παραδίδεται, ο γράφων δεν ξαναβλέπει το μήνυμά του, ένας μόνο γράφων ανάμεσα σε ουδέτερους. |
+| leonardo/env.sh | Το περιβάλλον κάθε job στο Leonardo (CINECA): venv, φάκελοι, μοντέλα χωρίς internet. |
+| leonardo/setup_env.sh | Στήσιμο μία φορά σε login node: repo, venv με σταθερές εκδόσεις. |
+| leonardo/download_models.sh | Κατέβασμα μοντέλων στο $SCRATCH από login node. |
+| leonardo/scaleup.sbatch | Η καμπάνια scale-up (Qwen2.5 και Qwen3, μικρά και 32B, 25 γύροι) ως job array, ένα μοντέλο ανά A100. |
 | kaggle_judge.ipynb | Ο κριτής εξαπάτησης v1 (SmolLM2) πάνω σε όλα τα μηνύματα του Διλήμματος του Φυλακισμένου. |
 | kaggle_judge_v2.ipynb | Ο κριτής v2: αυστηρότερος ορισμός, κριτής 8B σε δύο κάρτες, επικύρωση σε 245 ετικέτες. |
 | kaggle_neutral_labels.ipynb | Οι ενέργειες με ουδέτερα ονόματα (J και F). Είναι έτοιμο, αλλά δεν προγραμματίζεται. |
