@@ -43,7 +43,23 @@ SCENARIOS: list[tuple[str, list[str], str, str, str]] = [
     ("framing_business_context",    ["no_comm", "cheap_talk"], "meaningful", "neutral", "business"),
     ("framing_team_context",        ["no_comm", "cheap_talk"], "meaningful", "neutral", "team"),
     ("framing_competitive_context", ["no_comm", "cheap_talk"], "meaningful", "neutral", "competitive"),
+    # Contagion experiment (docs/contagion_plan.md): one scripted source among
+    # ordinary agents. The others write ordinary messages, so the policy here
+    # is theirs; the source's words and deeds come from SOURCE_SCENARIOS.
+    ("source_cc", ["cheap_talk"], "meaningful", "neutral", "none"),
+    ("source_hc", ["cheap_talk"], "meaningful", "neutral", "none"),
+    ("source_cd", ["cheap_talk"], "meaningful", "neutral", "none"),
+    ("source_hd", ["cheap_talk"], "meaningful", "neutral", "none"),
 ]
+
+# scenario -> (source action, source message pool). The pool file is
+# <source-pools>/<model short name>_<pool>.json (build_source_pools.py).
+SOURCE_SCENARIOS: dict[str, tuple[str, str]] = {
+    "source_cc": ("cooperate", "cooperative"),
+    "source_hc": ("cooperate", "hostile"),
+    "source_cd": ("defect", "cooperative"),
+    "source_hd": ("defect", "hostile"),
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -119,6 +135,13 @@ def parse_args() -> argparse.Namespace:
                         "arm, as every campaign so far. Used to add replicates "
                         "to a closed-channel anchor without re-running the open "
                         "arm; a restricted run lands in its own tree.")
+    p.add_argument("--source-pools", default=None,
+                   help="Folder holding the scripted source's message pools "
+                        "(build_source_pools.py). Required by the source_* "
+                        "scenarios, ignored by every other one.")
+    p.add_argument("--source-agent", type=int, default=0,
+                   help="Which agent is the scripted source in the source_* "
+                        "scenarios. Default 0, an endpoint of the line.")
     p.add_argument("--zip-after-each", action="store_true", default=True,
                    help="Write a per-scenario zip after each scenario finishes.")
     p.add_argument("--zip-mirror", default=None,
@@ -170,6 +193,9 @@ def main():
     # clique/line runs by accident.
     if args.topology != "star" and not args.out_dir_base.endswith(args.topology):
         args.out_dir_base = f"{args.out_dir_base}_{args.topology}"
+    # Every earlier campaign had four agents; another size is another network.
+    if args.n_agents != 4:
+        args.out_dir_base = f"{args.out_dir_base}_n{args.n_agents}"
     # A filtered run is a different experimental cell from its unfiltered twin.
     # Keeping it in a separate tree means a later ingest cannot silently mix
     # the two into one cell, the way the legacy layouts once did.
@@ -220,6 +246,29 @@ def main():
         if dropped:
             raise SystemExit(f"{dropped} have no {args.conditions} arm -- "
                              f"nothing would run for them.")
+
+    # The source pools are Prisoner's Dilemma messages of one model: refuse
+    # anything they were not built for before a model is loaded.
+    model_short = model_id.split("/")[-1]
+    source_cfg: dict[str, dict] = {}
+    for label in [s[0] for s in selected if s[0] in SOURCE_SCENARIOS]:
+        if args.games != ["pd"]:
+            raise SystemExit(f"{label} is a Prisoner's Dilemma cell; pass --games pd.")
+        if not args.source_pools:
+            raise SystemExit(f"{label} needs --source-pools (build_source_pools.py).")
+        if not 0 <= args.source_agent < args.n_agents:
+            raise SystemExit(f"--source-agent {args.source_agent} is not one of "
+                             f"the {args.n_agents} agents.")
+        action, pool = SOURCE_SCENARIOS[label]
+        path = os.path.join(args.source_pools, f"{model_short}_{pool}.json")
+        if not os.path.exists(path):
+            raise SystemExit(f"{label}: no pool at {path} for {model_short}.")
+        with open(path, encoding="utf-8") as f:
+            body = json.load(f)
+        source_cfg[label] = dict(
+            source_agent=args.source_agent, source_action=action,
+            source_pool=f"{model_short}_{pool}", source_pool_sha=body["sha1"],
+            source_pool_file=os.path.abspath(path))
 
     os.makedirs(args.out_dir_base, exist_ok=True)
     zips_dir = os.path.join(args.out_dir_base, "zips")
@@ -294,6 +343,7 @@ def main():
                     scenario=sc_label,
                     action_retries=args.action_retries,
                     out_dir=sc_out_dir,
+                    **source_cfg.get(sc_label, {}),
                 )
                 engine = make_engine(cfg)
                 cond_dir = os.path.join(sc_out_dir, condition)

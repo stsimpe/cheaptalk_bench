@@ -50,6 +50,10 @@ SESSION_SCENARIOS: dict[str, list[str]] = {
     # no_comm arm as well -- twice the cells of session B, hence the cost.
     "C": ["framing_business_context", "framing_team_context",
           "framing_competitive_context"],
+    # Contagion experiment (docs/contagion_plan.md): the natural line plus the
+    # four scripted-source cells. Run with --topology line --n-agents 6
+    # --conditions cheap_talk --games pd --source-pools pools.
+    "SRC": ["baseline", "source_cc", "source_hc", "source_cd", "source_hd"],
 }
 
 # max_new_tokens per model, per session, copied from the star campaign so a
@@ -96,7 +100,9 @@ def plan(model: str, session: str, topology: str, n_runs: int,
          conditions: list[str] | None = None,
          policy_agents: list[int] | None = None,
          hide_own: bool = False,
-         action_labels: str = "standard") -> dict:
+         action_labels: str = "standard",
+         n_agents: int = 4,
+         source_pools: str | None = None) -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -106,11 +112,11 @@ def plan(model: str, session: str, topology: str, n_runs: int,
                 f"explicitly, or add the model to MAX_NEW_TOKENS in campaign.py.\n"
                 f"Known models: {sorted(MAX_NEW_TOKENS)}"
             )
-        # "ALL" and "C" use the session-A value: A and C both send ordinary
-        # (message_policy="meaningful") messages, so they inherit the cap the
-        # star baseline used. Only the session-B framings differ, for the
-        # models whose star framing runs used a smaller cap.
-        key = "A" if session in ("ALL", "C") else session
+        # "ALL", "C" and "SRC" use the session-A value: their LLM agents all
+        # send ordinary (message_policy="meaningful") messages, so they
+        # inherit the cap the star baseline used. Only the session-B framings
+        # differ, for the models whose star framing runs used a smaller cap.
+        key = "A" if session in ("ALL", "C", "SRC") else session
         max_new_tokens = MAX_NEW_TOKENS[model][key]
 
     scenarios = SESSION_SCENARIOS[session]
@@ -129,6 +135,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
     # topology first, then the filter. If these drift apart, verify() looks in
     # a directory the sweep never wrote and a good session fails.
     result_dir = out_dir_base if topology == "star" else f"{out_dir_base}_{topology}"
+    if n_agents != 4:
+        result_dir = f"{result_dir}_n{n_agents}"
     if message_filter != "none":
         result_dir = f"{result_dir}_{message_filter}"
     if comm_fix:
@@ -149,6 +157,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
     if expected_runs(scenarios, n_runs, len(games), conditions) == 0:
         raise SystemExit(f"{scenarios} have no {conditions} arm -- nothing would run.")
     zip_name = f"{short}_{topology}_session{session}"
+    if n_agents != 4:
+        zip_name += f"_n{n_agents}"
     if message_filter != "none":
         zip_name += f"_{message_filter}"
     if comm_fix:
@@ -172,6 +182,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         "policy_agents": policy_agents,
         "hide_own": hide_own,
         "action_labels": action_labels,
+        "n_agents": n_agents,
+        "source_pools": source_pools,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
         "expected_runs": expected_runs(scenarios, n_runs, len(games), conditions),
@@ -207,6 +219,10 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
         cmd += ["--hide-own-message"]
     if p.get("action_labels", "standard") != "standard":
         cmd += ["--action-labels", p["action_labels"]]
+    if p.get("n_agents", 4) != 4:
+        cmd += ["--n-agents", str(p["n_agents"])]
+    if p.get("source_pools"):
+        cmd += ["--source-pools", p["source_pools"]]
     cmd += ["--scenarios", *p["scenarios"]]
     return cmd
 
@@ -325,6 +341,13 @@ def main() -> int:
                     help="What the agents are told the two actions are called: "
                          "'neutral' shows J/F with the same payoffs. Both arms "
                          "are affected. Own tree (suffix _neutral).")
+    ap.add_argument("--n-agents", type=int, default=4,
+                    help="Network size. Every campaign before the contagion "
+                         "experiment had 4; another size lands in its own "
+                         "tree (suffix _n<N>).")
+    ap.add_argument("--source-pools", default=None,
+                    help="Message pools of the scripted source, for the "
+                         "source_* scenarios of session SRC.")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
@@ -340,7 +363,8 @@ def main() -> int:
              games=args.games, message_filter=args.message_filter,
              comm_fix=args.topology_aware_comm_prompt,
              conditions=args.conditions, policy_agents=args.policy_agents,
-             hide_own=args.hide_own_message, action_labels=args.action_labels)
+             hide_own=args.hide_own_message, action_labels=args.action_labels,
+             n_agents=args.n_agents, source_pools=args.source_pools)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)

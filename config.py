@@ -114,6 +114,17 @@ class ExperimentConfig:
     # first campaign (False = old behavior, byte-identical to the 1,420-run
     # grid; True = the corrected prompt, used by the 2026-09 ablation).
     topology_aware_comm_prompt: bool = False
+    # Scripted source (the contagion experiment, docs/contagion_plan.md). The
+    # agent `source_agent` makes no model call: it plays `source_action`
+    # ("cooperate" or "defect") every round and sends a message drawn from the
+    # pool in `source_pool_file`. None (the default) is every earlier run.
+    # The pool's name and hash are recorded so a record says which words its
+    # source used.
+    source_agent: int | None = None
+    source_action: str = ""
+    source_pool: str = ""
+    source_pool_sha: str = ""
+    source_pool_file: str = ""
     # Scenario label this run belongs to ("baseline", "framing_team_context",
     # ...). Set by the runner so every record self-identifies: without it the
     # only trace of the scenario is the output directory name, and a

@@ -18,6 +18,7 @@ JSON parsing strategy:
 from __future__ import annotations
 
 import json
+import random
 import re
 from dataclasses import dataclass, field
 
@@ -162,6 +163,10 @@ class Agent:
     noise_seed: int = 0               # varies per run; feeds the no_sense RNG
     action_retries: int = 0           # resample once (or more) when the action is invalid
     action_labels: str = "standard"   # what the two actions are called in the prompt (games.ACTION_LABEL_SCHEMES)
+    # Scripted source (contagion experiment): a fixed action and messages
+    # drawn from a pool, with no model call. None is every earlier run.
+    scripted_action: str | None = None
+    scripted_messages: list[str] | None = None
     # Every LLM call of the current round: raw text, token counts, finish
     # reason, whether parsing failed. The engine drains it into the record.
     _calls: list = field(default_factory=list, repr=False)
@@ -253,6 +258,8 @@ class Agent:
         return action, reasoning
 
     def choose_action_no_comm(self, history: list[dict], round_num: int) -> tuple[str, str]:
+        if self.scripted_action is not None:
+            return self.scripted_action, "[scripted source]"
         user = build_no_comm_user(self._history_text(history), round_num)
         return self._generate_action(user)
 
@@ -269,6 +276,14 @@ class Agent:
         the filter models moderation inside the channel, not a change to the
         agent.
         """
+        # A scripted source draws its message from its pool, seeded per run,
+        # agent and round exactly like the no_sense templates.
+        if self.scripted_messages is not None:
+            rng = random.Random(self.noise_seed * 100_000 + self.agent_id * 1000 + round_num)
+            canned = rng.choice(self.scripted_messages)
+            delivered, blocked = apply_filter(self.message_filter, canned)
+            return delivered, canned, "[scripted source]", blocked
+
         # Replacement policies (irrelevant/no_sense/silence) skip the LLM
         # call entirely -- they don't need any model output.
         if is_replacement_policy(self.message_policy):
@@ -310,6 +325,8 @@ class Agent:
         own_message: str,
         received_messages: dict[int, str],
     ) -> tuple[str, str]:
+        if self.scripted_action is not None:
+            return self.scripted_action, "[scripted source]"
         user = build_ct_action_user(
             self._history_text(history), round_num, own_message, received_messages
         )

@@ -42,11 +42,38 @@ class GameEngine:
         self.condition = condition
         self.cfg = cfg
         self.valid_actions = set(game.action_labels)
+        self._source_pool = self._load_source_pool()
+
+    def _load_source_pool(self) -> list[str] | None:
+        """Messages of the scripted source, or None when there is no source.
+
+        The pool's hash is checked against the one the runner recorded in the
+        config, so a record can never claim words its source did not use.
+        """
+        if getattr(self.cfg, "source_agent", None) is None:
+            return None
+        import hashlib
+        import json
+        with open(self.cfg.source_pool_file, encoding="utf-8") as f:
+            pool = json.load(f)["messages"]
+        sha = hashlib.sha1("\n".join(pool).encode("utf-8")).hexdigest()[:12]
+        if sha != self.cfg.source_pool_sha:
+            raise ValueError(f"source pool {self.cfg.source_pool_file} hashes to "
+                             f"{sha}, the config records {self.cfg.source_pool_sha}")
+        return pool
+
+    def _source_action(self) -> str:
+        """The scripted source's action, in the game's own labels."""
+        coop = self.game.cooperative_action
+        other = next(a for a in self.game.action_labels if a != coop)
+        return {"cooperate": coop, "defect": other}[self.cfg.source_action]
 
     def build_agents(self, client, run_id: int = 0) -> list[Agent]:
         agents: list[Agent] = []
+        source = getattr(self.cfg, "source_agent", None)
         for i in range(self.topology.n_agents):
             neighbors = self.topology.neighbors(i)
+            scripted = i == source
             agents.append(
                 Agent(
                     agent_id=i,
@@ -76,6 +103,8 @@ class GameEngine:
                     # Opt-in (default "standard"): rename the two actions in
                     # every prompt; the record keeps the game's own labels.
                     action_labels=getattr(self.cfg, "action_labels", "standard"),
+                    scripted_action=self._source_action() if scripted else None,
+                    scripted_messages=self._source_pool if scripted else None,
                 )
             )
         return agents
