@@ -2,6 +2,7 @@
 
 Pre-registration for the contagion experiment. Written before any run;
 the reading rules below decide what the results are allowed to say.
+Approved by the author on 2026-10-22, before any run of session SRC.
 
 ## Question
 
