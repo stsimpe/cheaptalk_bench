@@ -16,9 +16,15 @@ Only PD, star and ring grid runs. Messages that name a star-network role
 a line, and a message about a hub would tell the reader something false
 about its network.
 
+With --first-round, only the cooperative pool, from round 1 alone
+(`<model>_cooperative_r1.json`): the replay of docs/replay_plan.md puts these
+messages into first-round contexts, where a line like "let's keep
+cooperating" would point to a past that does not exist.
+
 Usage:
     python build_source_pools.py --corpus <diplomatikh folder> \
         --models Qwen2.5-7B-Instruct Llama-3.1-8B-Instruct --out pools
+    python build_source_pools.py ... --first-round
 """
 from __future__ import annotations
 
@@ -55,7 +61,7 @@ def purely_hostile(msg: str) -> bool:
     return hostile(msg) and not COOP_WORDS.search(msg)
 
 
-def collect(corpus: str, model: str) -> dict[str, list[str]]:
+def collect(corpus: str, model: str, first_round: bool = False) -> dict[str, list[str]]:
     roots = [os.path.join(corpus, "star_runs", f"{model}_star"),
              os.path.join(corpus, "cycle_runs", f"{model}_cycle")]
     pools: dict[str, set[str]] = {"hostile": set(), "cooperative": set()}
@@ -67,12 +73,13 @@ def collect(corpus: str, model: str) -> dict[str, list[str]]:
         cell = cell_label(s["scenario"], s["condition"],
                           cfg.get("message_filter", "none"),
                           bool(cfg.get("topology_aware_comm_prompt", False)),
-                          action_labels=cfg.get("action_labels", "standard"))
+                          action_labels=cfg.get("action_labels", "standard"),
+                          silent_topology=bool(cfg.get("silent_topology", False)))
         kind = {"framing_competitive": "hostile",
                 "baseline_cheap_talk": "cooperative"}.get(cell)
         if kind is None:
             continue
-        for r in d["history"]:
+        for r in d["history"][:1] if first_round else d["history"]:
             for msg in (r.get("messages") or {}).values():
                 msg = str(msg).strip()
                 if not msg or STAR_WORDS.search(msg):
@@ -89,10 +96,15 @@ def main():
     ap.add_argument("--corpus", required=True, help="Folder holding star_runs/ and cycle_runs/.")
     ap.add_argument("--models", nargs="+", required=True)
     ap.add_argument("--out", default="pools")
+    ap.add_argument("--first-round", action="store_true",
+                    help="Only the cooperative pool, from round 1 (suffix _r1).")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     for m in args.models:
-        for kind, msgs in collect(args.corpus, m).items():
+        pools = collect(args.corpus, m, args.first_round)
+        if args.first_round:
+            pools = {"cooperative_r1": pools["cooperative"]}
+        for kind, msgs in pools.items():
             if not msgs:
                 raise SystemExit(f"{m} {kind}: empty pool -- check --corpus.")
             body = {"model": m, "kind": kind, "n": len(msgs), "messages": msgs}

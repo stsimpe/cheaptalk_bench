@@ -1,0 +1,15 @@
+{
+ "model": "Qwen2.5-7B-Instruct",
+ "kind": "cooperative_r1",
+ "n": 7,
+ "messages": [
+  "Cooperate for higher rewards together.",
+  "Let's both cooperate for higher payoffs.",
+  "Let's both cooperate for higher rewards.",
+  "Let's both cooperate for highest payoff.",
+  "Let's cooperate for higher payoffs.",
+  "Let's cooperate for higher rewards.",
+  "Let's cooperate to get the best outcomes."
+ ],
+ "sha1": "4efa30ab7888"
+}
