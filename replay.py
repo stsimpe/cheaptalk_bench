@@ -177,6 +177,11 @@ def run(args):
                 r = json.loads(line)
                 done.add((r["run"], r["agent"], r["variant"], r["sample"]))
         print(f"resuming: {len(done)} calls already in {args.out}")
+    todo = sum((c["run"], c["agent"], v[0], s) not in done
+               for c, v in jobs for s in range(args.samples))
+    if not todo:
+        print("nothing left to do: the model is not loaded")
+        return
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
 
     from engine import make_engine

@@ -112,6 +112,15 @@ network buffers a single hostile source.
 ## Cost
 
 About 160 model calls per source run (five LLM agents, two calls, 16
-rounds), 192 for `baseline`. On Kaggle's T4 pair, one model per card, this
-is estimated at one session (under 12 hours); measured times will replace
-the estimate.
+rounds), 192 for `baseline`: 4,160 calls per model.
+
+*Amended on 2026-10-22, before any run; the design, the cells and the rules
+are unchanged.* Kaggle sessions are capped at 8 hours, and at the measured
+seconds per call Llama alone needs about 11 hours of one card. The runs are
+therefore split into two blocks: session 1 runs runs 1-3 of every cell of
+both models, session 2 runs 4-5 (`--first-run 4`), with the run ids, seeds
+and file names a single session would have used. Every cell, and so every
+contrast of the rules, draws on both sessions in the same proportion, so a
+difference between the sessions (a library update on Kaggle) cannot pass for
+a cell effect. Estimated at about 5.5 and 3.7 hours; measured times will
+replace the estimates.

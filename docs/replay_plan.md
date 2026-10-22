@@ -158,6 +158,6 @@ built to copy its own action word and to read intent, and it returned
 
 ## Cost
 
-675 calls per model; one Kaggle session with two models in parallel, about
-4 hours from the measured seconds per action call. Measured times will
-replace the estimate.
+675 calls per model; one Kaggle session (capped at 8 hours) with two models
+in parallel, about 4 hours from the measured seconds per action call.
+Measured times will replace the estimate.

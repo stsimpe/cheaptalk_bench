@@ -33,8 +33,10 @@ chose ..."): experience stays, description goes.
 - **Cells.** `no_comm`, `silence`, `no_sense`: the cells where topology moved
   cooperation in the corpus. Ordinary talk is at the ceiling on every
   topology, so it cannot show a deficit and is not run.
-- **Networks.** Star and ring, four agents, both measured in the same period,
-  so the silent star-versus-ring comparison carries no period confound.
+- **Networks.** Star and ring, four agents, measured side by side: in every
+  session one card runs a model on the star and the other the same model on
+  the ring, at the same time, on the same machine and software. The silent
+  star-versus-ring comparison carries no period confound.
 - **Models.** The five of the corpus. 5 runs per cell; PD, 16 rounds, hidden
   horizon, memory 10, T = 0.7, the corpus token budgets (session A values).
 - **Size.** 2 networks x 3 cells x 5 models x 5 runs = 150 runs.
@@ -77,6 +79,9 @@ The experience reading predicts that the deficit survives (k >= 12).
 ## Cost
 
 64 model calls per run (four agents, one action call each, 16 rounds; the
-`silence` and `no_sense` messages are canned): 9,600 calls in all. Two Kaggle
-sessions, one per network, each estimated at about 5 to 6 hours with two
-models running in parallel; measured times will replace the estimate.
+`silence` and `no_sense` messages are canned): 9,600 calls in all. Kaggle
+sessions are capped at 8 hours, so three sessions, the star on one card and
+the ring on the other: gemma-2-9b and Qwen2.5 (about 5 hours), Qwen3-4B and
+gemma-2-2b (about 5.5), Llama (about 3). The estimates come from the
+measured seconds per call, the ring's being the longer; measured times will
+replace them.
