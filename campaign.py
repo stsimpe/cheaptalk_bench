@@ -102,7 +102,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
          hide_own: bool = False,
          action_labels: str = "standard",
          n_agents: int = 4,
-         source_pools: str | None = None) -> dict:
+         source_pools: str | None = None,
+         silent_topology: bool = False) -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -154,6 +155,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         result_dir = f"{result_dir}_hideown"
     if action_labels != "standard":
         result_dir = f"{result_dir}_{action_labels}"
+    if silent_topology:
+        result_dir = f"{result_dir}_silent"
     if expected_runs(scenarios, n_runs, len(games), conditions) == 0:
         raise SystemExit(f"{scenarios} have no {conditions} arm -- nothing would run.")
     zip_name = f"{short}_{topology}_session{session}"
@@ -173,6 +176,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         zip_name += "_hideown"
     if action_labels != "standard":
         zip_name += f"_{action_labels}"
+    if silent_topology:
+        zip_name += "_silent"
     return {
         "model": model, "session": session, "topology": topology,
         "scenarios": scenarios, "n_runs": n_runs, "n_rounds": n_rounds,
@@ -184,6 +189,7 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         "action_labels": action_labels,
         "n_agents": n_agents,
         "source_pools": source_pools,
+        "silent_topology": silent_topology,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
         "expected_runs": expected_runs(scenarios, n_runs, len(games), conditions),
@@ -223,6 +229,8 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
         cmd += ["--n-agents", str(p["n_agents"])]
     if p.get("source_pools"):
         cmd += ["--source-pools", p["source_pools"]]
+    if p.get("silent_topology"):
+        cmd += ["--silent-topology"]
     cmd += ["--scenarios", *p["scenarios"]]
     return cmd
 
@@ -348,11 +356,15 @@ def main() -> int:
     ap.add_argument("--source-pools", default=None,
                     help="Message pools of the scripted source, for the "
                          "source_* scenarios of session SRC.")
+    ap.add_argument("--silent-topology", action="store_true",
+                    help="Say nothing about the network in either arm "
+                         "(docs/silent_topology_plan.md). Own tree (_silent).")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
 
-    if args.topology != "star" and not args.topology_aware_comm_prompt:
+    if (args.topology != "star" and not args.topology_aware_comm_prompt
+            and not args.silent_topology):
         raise SystemExit(
             f"--topology {args.topology} needs --topology-aware-comm-prompt: without it "
             f"the cheap-talk prompt describes a star (the 2026-09-20 bug). campaign.py "
@@ -364,7 +376,8 @@ def main() -> int:
              comm_fix=args.topology_aware_comm_prompt,
              conditions=args.conditions, policy_agents=args.policy_agents,
              hide_own=args.hide_own_message, action_labels=args.action_labels,
-             n_agents=args.n_agents, source_pools=args.source_pools)
+             n_agents=args.n_agents, source_pools=args.source_pools,
+             silent_topology=args.silent_topology)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)
@@ -387,6 +400,9 @@ def main() -> int:
               f"the rest write ordinary messages -> {p['result_dir']}")
     if p.get("hide_own"):
         print(f"OWN MESSAGE  : hidden from its writer in the action phase "
+              f"-> {p['result_dir']}")
+    if p.get("silent_topology"):
+        print(f"NETWORK      : not described to the agents, both arms "
               f"-> {p['result_dir']}")
     if p.get("action_labels", "standard") != "standard":
         names = " / ".join(ACTION_LABEL_SCHEMES[p["action_labels"]])

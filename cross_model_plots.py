@@ -363,7 +363,8 @@ def collect_trajectories(roots: list[str]):
         cell = cell_label(summary["scenario"], summary["condition"],
                           cfg.get("message_filter", "none"),
                           bool(cfg.get("topology_aware_comm_prompt", False)),
-                          action_labels=cfg.get("action_labels", "standard"))
+                          action_labels=cfg.get("action_labels", "standard"),
+                          silent_topology=bool(cfg.get("silent_topology", False)))
         topology = summary["topology"]
         game_name = cfg.get("game")
         if game_name not in GAMES:

@@ -37,6 +37,22 @@ def topology_description(n_neighbors: int, total_agents: int) -> str:
     )
 
 
+# Silent topology (docs/silent_topology_plan.md): the same routing, with
+# nothing said about the network's shape or size. An agent still learns how
+# many partners it has from its history ("Neighbor #k chose ..."), which is
+# the point: experience stays, description goes. Used for both conditions.
+SILENT_TOPOLOGY = (
+    "You interact with other agents in a network. Each round, every agent "
+    "chooses one action that is applied in the pairwise game with each agent "
+    "it is connected to. Your payoff in a round is the sum of these pairwise "
+    "payoffs."
+)
+SILENT_COMMUNICATION = (
+    "each agent sends a single message that reaches the agents it is "
+    "connected to, and no one else"
+)
+
+
 def format_history(
     history: list[dict],
     agent_id: int,

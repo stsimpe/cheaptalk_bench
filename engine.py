@@ -32,6 +32,7 @@ from agent import Agent
 from config import ExperimentConfig, ModelConfig
 from games import Game, GAMES
 from llm_client import make_client
+from prompts import SILENT_COMMUNICATION, SILENT_TOPOLOGY
 from topology import StarTopology, make_topology
 
 
@@ -71,9 +72,22 @@ class GameEngine:
     def build_agents(self, client, run_id: int = 0) -> list[Agent]:
         agents: list[Agent] = []
         source = getattr(self.cfg, "source_agent", None)
+        silent = getattr(self.cfg, "silent_topology", False)
         for i in range(self.topology.n_agents):
             neighbors = self.topology.neighbors(i)
             scripted = i == source
+            if silent:
+                topology_text, communication_text = SILENT_TOPOLOGY, SILENT_COMMUNICATION
+            else:
+                topology_text = self.topology.describe(i)
+                # Opt-in (default off): the cheap-talk prompt otherwise
+                # describes star routing on every topology. See
+                # prompts.STAR_COMMUNICATION_LEGACY.
+                communication_text = (
+                    self.topology.describe_communication(i)
+                    if getattr(self.cfg, "topology_aware_comm_prompt", False)
+                    else None
+                )
             agents.append(
                 Agent(
                     agent_id=i,
@@ -89,15 +103,8 @@ class GameEngine:
                     framing_type=self.cfg.framing_type,
                     context_framing=getattr(self.cfg, "context_framing", "none"),
                     message_filter=getattr(self.cfg, "message_filter", "none"),
-                    topology_text=self.topology.describe(i),
-                    # Opt-in (default off): the cheap-talk prompt otherwise
-                    # describes star routing on every topology. See
-                    # prompts.STAR_COMMUNICATION_LEGACY.
-                    communication_text=(
-                        self.topology.describe_communication(i)
-                        if getattr(self.cfg, "topology_aware_comm_prompt", False)
-                        else None
-                    ),
+                    topology_text=topology_text,
+                    communication_text=communication_text,
                     noise_seed=self.cfg.seed + run_id,
                     action_retries=getattr(self.cfg, "action_retries", 0),
                     # Opt-in (default "standard"): rename the two actions in

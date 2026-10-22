@@ -114,6 +114,10 @@ class ExperimentConfig:
     # first campaign (False = old behavior, byte-identical to the 1,420-run
     # grid; True = the corrected prompt, used by the 2026-09 ablation).
     topology_aware_comm_prompt: bool = False
+    # Say nothing about the network (docs/silent_topology_plan.md): the
+    # topology paragraph and the routing sentence are replaced by text with
+    # no shape and no size. Routing is unchanged. False is every earlier run.
+    silent_topology: bool = False
     # Scripted source (the contagion experiment, docs/contagion_plan.md). The
     # agent `source_agent` makes no model call: it plays `source_action`
     # ("cooperate" or "defect") every round and sends a message drawn from the

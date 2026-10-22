@@ -247,7 +247,8 @@ def collect_messages(roots: list[str], agents: str = "all",
         cell = cell_label(summary["scenario"], summary["condition"],
                           cfg.get("message_filter", "none"),
                           bool(cfg.get("topology_aware_comm_prompt", False)),
-                          action_labels=cfg.get("action_labels", "standard"))
+                          action_labels=cfg.get("action_labels", "standard"),
+                          silent_topology=bool(cfg.get("silent_topology", False)))
         # base_cell, not cell: a tagged variant such as no_sense+commfix is
         # still a canned scenario, and the plain membership test let 24 of
         # them through into the judge's input.

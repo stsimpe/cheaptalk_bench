@@ -188,7 +188,8 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
                                bool(cfg.get("topology_aware_comm_prompt", False)),
                                cfg.get("policy_agents"),
                                bool(cfg.get("hide_own_message", False)),
-                               action_labels=cfg.get("action_labels", "standard")),
+                               action_labels=cfg.get("action_labels", "standard"),
+                               silent_topology=bool(cfg.get("silent_topology", False))),
             "framing_type": cfg.get("framing_type", ""),
             # In the master table too, so a mixed cell is visible after the
             # fact instead of only at grouping time.
@@ -210,7 +211,8 @@ def cell_label(scenario: str, condition: str,
                message_filter: str = "none", comm_fix: bool = False,
                policy_agents: list | None = None,
                hide_own: bool = False,
-               action_labels: str = "standard") -> str:
+               action_labels: str = "standard",
+               silent_topology: bool = False) -> str:
     """Unique label for one experimental cell.
 
     A cell is an experimental condition, so anything that changes the
@@ -250,8 +252,12 @@ def cell_label(scenario: str, condition: str,
     renamed = action_labels if action_labels in RENAMED_LABELS else ""
     if action_labels and action_labels != "standard" and not renamed:
         raise ValueError(f"unknown action-label scheme {action_labels!r}")
+    # Tags that reach the closed arm as well, in a fixed order: renamed action
+    # labels, then the silent topology (the system prompt of a no_comm run
+    # carries the network paragraph too, so a silent no_comm is its own anchor).
+    both_arms = [t for t in (renamed, "silent" if silent_topology else "") if t]
     if condition != "cheap_talk":
-        return f"{label}+{renamed}" if renamed else label
+        return f"{label}+{'+'.join(both_arms)}" if both_arms else label
     tags = []
     if message_filter and message_filter != "none":
         # F3_relative_gain -> F3; block_all keeps its name, it is not a lexicon
@@ -266,21 +272,20 @@ def cell_label(scenario: str, condition: str,
         tags.append("agents" + "".join(str(a) for a in sorted(policy_agents)))
     if hide_own:
         tags.append("hideown")
-    if renamed:
-        tags.append(renamed)
+    tags.extend(both_arms)
     return f"{label}+{'+'.join(tags)}" if tags else label
 
 
 def anchor_cell(cell: str) -> str:
     """The closed arm a cell's delta is measured against.
 
-    `no_comm` for every cell, except one whose agents read renamed action
-    labels: that is measured against the `no_comm` that read the same names
-    (`no_comm+neutral`). Anchoring it on the standard closed arm would fold
-    the effect of the names into the effect of the channel.
+    `no_comm` for every cell, except one whose closed arm was changed too:
+    renamed action labels (`no_comm+neutral`) or the silent topology
+    (`no_comm+silent`). Anchoring such a cell on the standard closed arm would
+    fold the change into the effect of the channel.
     """
-    renamed = [t for t in cell.split("+")[1:] if t in RENAMED_LABELS]
-    return f"no_comm+{renamed[0]}" if renamed else "no_comm"
+    both = [t for t in cell.split("+")[1:] if t in RENAMED_LABELS or t == "silent"]
+    return f"no_comm+{'+'.join(both)}" if both else "no_comm"
 
 
 def base_cell(cell: str) -> str:

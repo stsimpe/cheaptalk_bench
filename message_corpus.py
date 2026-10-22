@@ -54,7 +54,8 @@ def build(roots: list[str]) -> pd.DataFrame:
         cell = cell_label(summary["scenario"], summary["condition"],
                           cfg.get("message_filter", "none"),
                           bool(cfg.get("topology_aware_comm_prompt", False)),
-                          action_labels=cfg.get("action_labels", "standard"))
+                          action_labels=cfg.get("action_labels", "standard"),
+                          silent_topology=bool(cfg.get("silent_topology", False)))
         topology = summary["topology"]
         coop = GAMES[game_name].cooperative_action
         n_runs += 1

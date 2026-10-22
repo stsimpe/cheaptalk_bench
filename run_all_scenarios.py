@@ -100,6 +100,11 @@ def parse_args() -> argparse.Namespace:
                         "carried since the first campaign. Off reproduces every "
                         "earlier run byte-for-byte; on is the corrected prompt "
                         "(2026-09 ablation). Runs land in a separate tree.")
+    p.add_argument("--silent-topology", action="store_true",
+                   help="Say nothing about the network: the topology paragraph "
+                        "and the routing sentence are replaced by text with no "
+                        "shape and no size (docs/silent_topology_plan.md). "
+                        "Both arms are affected. Own tree (suffix _silent).")
     p.add_argument("--allow-legacy-star-prompt", action="store_true",
                    help="Permit a non-star topology WITHOUT the corrected "
                         "prompt, i.e. with the star routing sentence. Only for "
@@ -181,8 +186,9 @@ def main():
     # The prompt bug of 2026-09-20 was this exact combination running silently:
     # a non-star topology with the legacy routing sentence. It is now refused
     # unless asked for by name.
+    # The silent prompt describes no routing at all, so it cannot be wrong.
     if (args.topology != "star" and not args.topology_aware_comm_prompt
-            and not args.allow_legacy_star_prompt):
+            and not args.silent_topology and not args.allow_legacy_star_prompt):
         raise SystemExit(
             f"--topology {args.topology} without --topology-aware-comm-prompt would "
             f"tell every agent it sits in a star. Add --topology-aware-comm-prompt, "
@@ -221,6 +227,10 @@ def main():
     # must never share a folder -- or a no_comm anchor -- with a standard one.
     if args.action_labels != "standard":
         args.out_dir_base = f"{args.out_dir_base}_{args.action_labels}"
+    # The silent prompt reaches the closed arm too, so a silent tree must never
+    # share a folder, or a no_comm anchor, with an announced one.
+    if args.silent_topology:
+        args.out_dir_base = f"{args.out_dir_base}_silent"
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -340,6 +350,7 @@ def main():
                     hide_own_message=args.hide_own_message,
                     action_labels=args.action_labels,
                     topology_aware_comm_prompt=args.topology_aware_comm_prompt,
+                    silent_topology=args.silent_topology,
                     scenario=sc_label,
                     action_retries=args.action_retries,
                     out_dir=sc_out_dir,
