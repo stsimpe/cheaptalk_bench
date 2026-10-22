@@ -228,6 +228,15 @@ def main():
         print(f"\n-> {args.csv}")
     if len(models) < 2:
         print("\n[note] Every rule needs both models; with one, only the margins are shown.")
+    # The rules are read on the complete design: five runs per cell and model.
+    # A session that holds one block of runs (3 of 5, or 2 of 5) shows the
+    # description above and stops here, so no verdict is read early.
+    runs = df.groupby(["model", "cell"])["run"].nunique()
+    short_cells = [f"{m.split('-')[0]} {c}: {n}" for (m, c), n in runs.items() if n < 5]
+    if short_cells or len(runs) < len(models) * len(CELLS):
+        print(f"\n[not read] the rules need 5 runs of every cell in both models; "
+              f"short: {', '.join(short_cells) or 'cells missing'}")
+        return
 
     print("\n=== R1  reach: harm against source_cc, > 0.10 in both models, Holm p < 0.05 ===")
     for cell in [c for c in SOURCE_CELLS if c in set(df.cell)]:

@@ -105,6 +105,11 @@ def parse_args() -> argparse.Namespace:
                         "and the routing sentence are replaced by text with no "
                         "shape and no size (docs/silent_topology_plan.md). "
                         "Both arms are affected. Own tree (suffix _silent).")
+    p.add_argument("--first-run", type=int, default=1,
+                   help="Number the runs from here (default 1). A cell split over "
+                        "sessions runs 1-3 in one and --first-run 4 --n-runs 2 in "
+                        "the other: run ids, seeds and file names are the ones a "
+                        "single session would have used.")
     p.add_argument("--allow-legacy-star-prompt", action="store_true",
                    help="Permit a non-star topology WITHOUT the corrected "
                         "prompt, i.e. with the star routing sentence. Only for "
@@ -242,6 +247,8 @@ def main():
         request_delay = 0.0
 
     n_runs = 2 if args.quick else args.n_runs
+    if args.first_run < 1:
+        raise SystemExit("--first-run counts from 1.")
     n_rounds = 8 if args.quick else args.n_rounds
 
     selected = SCENARIOS
@@ -362,7 +369,7 @@ def main():
 
                 print(f"\n  --- {sc_label} | {condition} | game={game} | "
                       f"{n_runs}x{n_rounds} ---")
-                for run_id in range(1, n_runs + 1):
+                for run_id in range(args.first_run, args.first_run + n_runs):
                     try:
                         record = engine.run_one(run_id=run_id, client=client)
                     except TokenBudgetExceeded as e:
