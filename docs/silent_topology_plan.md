@@ -2,6 +2,7 @@
 
 Pre-registration. Written before any run; the reading rule below decides what
 the results are allowed to say.
+Approved by the author on 2026-10-27, before any run.
 
 ## Question
 

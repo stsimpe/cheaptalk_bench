@@ -2,6 +2,7 @@
 
 Pre-registration. Written before any replay call; the reading rules below
 decide what the results are allowed to say.
+Approved by the author on 2026-10-27, before any replay call.
 
 ## Question
 
