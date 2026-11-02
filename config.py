@@ -38,7 +38,7 @@ FramingType = Literal["business", "team", "competitive", "neutral"]
 # Context framing: a framing paragraph injected into the SYSTEM prompt, so it
 # applies in BOTH conditions (works without cheap talk). Distinct from the
 # message-phase "framing" policy, which only shapes the communicate prompt.
-ContextFraming = Literal["none", "business", "team", "competitive"]
+ContextFraming = Literal["none", "business", "team", "competitive", "manipulative"]
 
 # What the agents are told the two actions are called (games.ACTION_LABEL_SCHEMES).
 # "standard" is every run before 2026-10; "neutral" shows J / F.
@@ -95,6 +95,8 @@ class ExperimentConfig:
     # ordinary messages. None (the default) means it applies to everyone, as
     # in every run before 2026-09. Used to ask whether adversarial writing
     # harms only its author or spreads to the neighbours who read it.
+    # From 2026-11 it restricts the system-prompt framing (context_framing)
+    # too, for the manipulator; no earlier run set both.
     policy_agents: list[int] | None = None
     # The sender is not shown the message it just wrote. Off (the default) is
     # every run before 2026-09-30, where the action prompt always quoted it

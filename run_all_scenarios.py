@@ -50,6 +50,10 @@ SCENARIOS: list[tuple[str, list[str], str, str, str]] = [
     ("source_hc", ["cheap_talk"], "meaningful", "neutral", "none"),
     ("source_cd", ["cheap_talk"], "meaningful", "neutral", "none"),
     ("source_hd", ["cheap_talk"], "meaningful", "neutral", "none"),
+    # The manipulator (docs/manipulator_plan.md): a private aim to exploit the
+    # neighbours' trust, in the system prompt of the --policy-agents only.
+    # Without messages there is no trust to win, so cheap_talk only.
+    ("framing_manipulative_context", ["cheap_talk"], "meaningful", "neutral", "manipulative"),
 ]
 
 # scenario -> (source action, source message pool). The pool file is
@@ -135,8 +139,9 @@ def parse_args() -> argparse.Namespace:
                         "earlier run; 'neutral' shows J/F with the same payoffs. "
                         "The record keeps the game's own labels. Own tree.")
     p.add_argument("--policy-agents", nargs="+", type=int, default=None,
-                   help="Apply the scenario's message policy only to these "
-                        "agent ids; the others write ordinary messages. "
+                   help="Apply the scenario's message policy and system-"
+                        "prompt framing only to these agent ids; the others "
+                        "write ordinary messages, with no frame. "
                         "Default: everyone, as in every earlier campaign. "
                         "Runs land in their own tree.")
     p.add_argument("--conditions", nargs="+", default=None,

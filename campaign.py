@@ -54,6 +54,10 @@ SESSION_SCENARIOS: dict[str, list[str]] = {
     # four scripted-source cells. Run with --topology line --n-agents 6
     # --conditions cheap_talk --games pd --source-pools pools.
     "SRC": ["baseline", "source_cc", "source_hc", "source_cd", "source_hd"],
+    # The manipulator (docs/manipulator_plan.md): one LLM agent with a private
+    # aim to exploit its neighbours' trust. Run with --topology line
+    # --n-agents 6 --topology-aware-comm-prompt --games pd --policy-agents 0.
+    "MANIP": ["framing_manipulative_context"],
 }
 
 # max_new_tokens per model, per session, copied from the star campaign so a
@@ -115,11 +119,12 @@ def plan(model: str, session: str, topology: str, n_runs: int,
                 f"explicitly, or add the model to MAX_NEW_TOKENS in campaign.py.\n"
                 f"Known models: {sorted(MAX_NEW_TOKENS)}"
             )
-        # "ALL", "C" and "SRC" use the session-A value: their LLM agents all
-        # send ordinary (message_policy="meaningful") messages, so they
-        # inherit the cap the star baseline used. Only the session-B framings
-        # differ, for the models whose star framing runs used a smaller cap.
-        key = "A" if session in ("ALL", "C", "SRC") else session
+        # "ALL", "C", "SRC" and "MANIP" use the session-A value: their LLM
+        # agents all send ordinary (message_policy="meaningful") messages, so
+        # they inherit the cap the star baseline used. Only the session-B
+        # framings differ, for the models whose star framing runs used a
+        # smaller cap.
+        key = "A" if session in ("ALL", "C", "SRC", "MANIP") else session
         max_new_tokens = MAX_NEW_TOKENS[model][key]
 
     scenarios = SESSION_SCENARIOS[session]
@@ -349,8 +354,9 @@ def main() -> int:
                     help="The writer is not shown its own message in the "
                          "action phase. Own tree.")
     ap.add_argument("--policy-agents", nargs="+", type=int, default=None,
-                    help="Give the scenario's message policy to these agents "
-                         "only; the rest write ordinary messages. Own tree.")
+                    help="Give the scenario's message policy and system-prompt "
+                         "framing to these agents only; the rest write ordinary "
+                         "messages, with no frame. Own tree.")
     ap.add_argument("--conditions", nargs="+", default=None,
                     choices=["no_comm", "cheap_talk"],
                     help="Run only these arms, e.g. extra no_comm replicates. "
@@ -420,7 +426,7 @@ def main() -> int:
         print(f"ARMS         : only {p['conditions']}  "
               f"-> separate tree: {p['result_dir']}")
     if p.get("policy_agents") is not None:
-        print(f"WRITERS      : policy only for agents {p['policy_agents']}, "
+        print(f"WRITERS      : policy and frame only for agents {p['policy_agents']}, "
               f"the rest write ordinary messages -> {p['result_dir']}")
     if p.get("hide_own"):
         print(f"OWN MESSAGE  : hidden from its writer in the action phase "

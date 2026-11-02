@@ -101,7 +101,7 @@ class GameEngine:
                     memory_window=self.cfg.memory_window,
                     message_policy=self._policy_for(i),
                     framing_type=self.cfg.framing_type,
-                    context_framing=getattr(self.cfg, "context_framing", "none"),
+                    context_framing=self._context_for(i),
                     message_filter=getattr(self.cfg, "message_filter", "none"),
                     topology_text=topology_text,
                     communication_text=communication_text,
@@ -128,6 +128,19 @@ class GameEngine:
         if only is None or agent_id in only:
             return self.cfg.message_policy
         return "meaningful"
+
+    def _context_for(self, agent_id: int) -> str:
+        """The system-prompt framing this agent is given.
+
+        `policy_agents` restricts it as it restricts the message policy, so a
+        single framed agent can sit among unframed neighbours (the
+        manipulator, docs/manipulator_plan.md). No run before 2026-11 set
+        both, so every earlier record rebuilds unchanged.
+        """
+        only = getattr(self.cfg, "policy_agents", None)
+        if only is None or agent_id in only:
+            return getattr(self.cfg, "context_framing", "none")
+        return "none"
 
     def _messages_seen_by(self, messages: dict[int, str]) -> dict[int, dict[int, str]]:
         """For each agent, which messages are visible to it: exactly those of

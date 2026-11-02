@@ -105,8 +105,10 @@ def check(p, show=None):
                     errs.append(f'r{rnd} a{i}: routing sentence missing')
             elif 'Messages travel' in sysp:
                 errs.append(f'r{rnd} a{i}: no_comm prompt mentions messages')
-            # --- framing
-            ctx = CONTEXT_FRAMING_PARAGRAPHS.get(cfg.context_framing, '')
+            # --- framing: the cell's frame, which --policy-agents gives to
+            # the listed agents only (as the message policy above)
+            framed = cfg.policy_agents is None or i in cfg.policy_agents
+            ctx = CONTEXT_FRAMING_PARAGRAPHS.get(cfg.context_framing, '') if framed else ''
             if ctx and ctx not in sysp:
                 errs.append(f'r{rnd} a{i}: context framing missing')
             if not ctx and 'Context:' in sysp:
