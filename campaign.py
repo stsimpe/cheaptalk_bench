@@ -104,7 +104,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
          n_agents: int = 4,
          source_pools: str | None = None,
          silent_topology: bool = False,
-         first_run: int = 1) -> dict:
+         first_run: int = 1,
+         provider: str = "local") -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -197,6 +198,7 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         "source_pools": source_pools,
         "silent_topology": silent_topology,
         "first_run": first_run,
+        "provider": provider,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
         "expected_runs": expected_runs(scenarios, n_runs, len(games), conditions),
@@ -207,7 +209,7 @@ def plan(model: str, session: str, topology: str, n_runs: int,
 def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
     cmd = [
         sys.executable, "run_all_scenarios.py",
-        "--provider", "local",
+        "--provider", p.get("provider", "local"),
         "--model-id", p["model"],
         "--topology", p["topology"],
         "--n-runs", str(p["n_runs"]),
@@ -368,6 +370,10 @@ def main() -> int:
     ap.add_argument("--silent-topology", action="store_true",
                     help="Say nothing about the network in either arm "
                          "(docs/silent_topology_plan.md). Own tree (_silent).")
+    ap.add_argument("--provider", default="local", choices=["local", "pharos"],
+                    help="local: load the model on this machine's GPU (default). "
+                         "pharos: call the AILS lab's vLLM server; the model must be "
+                         "one it serves, and PHAROS_API_KEY must be in .env.")
     ap.add_argument("--first-run", type=int, default=1,
                     help="Number the runs from here: with --n-runs 2, --first-run 4 "
                          "runs 4 and 5 of every cell (a cell split over sessions).")
@@ -389,7 +395,8 @@ def main() -> int:
              conditions=args.conditions, policy_agents=args.policy_agents,
              hide_own=args.hide_own_message, action_labels=args.action_labels,
              n_agents=args.n_agents, source_pools=args.source_pools,
-             silent_topology=args.silent_topology, first_run=args.first_run)
+             silent_topology=args.silent_topology, first_run=args.first_run,
+             provider=args.provider)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)
@@ -400,6 +407,9 @@ def main() -> int:
     print(f"topology     : {p['topology']}  (runs={runs} rounds={p['n_rounds']} "
           f"max_new_tokens={p['max_new_tokens']})")
     print(f"games        : {p['games']}")
+    if p.get("provider", "local") != "local":
+        print(f"PROVIDER     : {p['provider']} (the model is called over the API, "
+              f"not loaded here)")
     if p.get("comm_fix"):
         print(f"PROMPT       : topology-aware communication paragraph "
               f"-> separate tree: {p['result_dir']}")

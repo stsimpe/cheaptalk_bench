@@ -20,7 +20,7 @@ ConditionName = Literal["no_comm", "cheap_talk"]
 MessageFilter = Literal["none", "F1_competitive", "F3_relative_gain", "block_all"]
 # "local" runs the model on the current machine via transformers (Kaggle / Colab
 # / your own GPU). The other providers are remote API calls.
-Provider = Literal["groq", "openai", "huggingface", "openrouter", "local"]
+Provider = Literal["groq", "openai", "huggingface", "openrouter", "pharos", "local"]
 
 # Message-content policies (alibi for cheap-talk content control).
 # See message_policies.py for what each one does.

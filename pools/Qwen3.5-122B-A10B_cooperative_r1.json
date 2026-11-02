@@ -1,0 +1,28 @@
+{
+ "model": "Qwen3.5-122B-A10B",
+ "kind": "cooperative_r1",
+ "n": 20,
+ "messages": [
+  "I intend to Cooperate in this round; please Cooperate with me to maximize our joint score.",
+  "I intend to Cooperate this round. Please Cooperate with me so we both get 4 points.",
+  "I intend to cooperate this round; if you also cooperate, we both gain 4 points.",
+  "I intend to cooperate this round; please cooperate with me to maximize our mutual payoff.",
+  "I promise to cooperate this round if you do, ensuring we both get the maximum payoff of 4.",
+  "I propose we all cooperate this round to build trust and maximize our future scores together.",
+  "I propose we both Cooperate this round to achieve the best mutual payoff of 4 points each.",
+  "I propose we both Cooperate this round to achieve the best outcome for us both.",
+  "I propose we both Cooperate this round to earn 4 points each; if you Cooperate, I will too.",
+  "I propose we both cooperate this round and continue cooperating if the other does.",
+  "I propose we both cooperate this round for mutual benefit; I will cooperate if you do.",
+  "I propose we both cooperate this round to achieve a payoff of 4 each.",
+  "I will cooperate this round if you do, to maximize our mutual payoff.",
+  "Let us all choose Cooperate this round to maximize our collective payoffs and build trust for future interactions.",
+  "Let us all choose Cooperate this round to maximize our collective scores and build trust for the future.",
+  "Let us both choose Cooperate this round to achieve a mutually beneficial payoff of 4.",
+  "Let us both choose Cooperate this round to achieve the best mutual outcome of 4 points each.",
+  "Let us both choose Cooperate this round to maximize our shared payoff.",
+  "Let us both cooperate this round for maximum payoff; I will reciprocate cooperation but punish any defection.",
+  "Let's all cooperate this round to earn 4 points each; mutual trust maximizes our long-term score."
+ ],
+ "sha1": "b1e245fc9e51"
+}

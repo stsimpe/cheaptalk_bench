@@ -2,9 +2,10 @@
 
 Two families of clients are supported:
 
-1. Remote API clients (Groq, OpenAI, HuggingFace router, OpenRouter) -- they
-   share an OpenAI-compatible REST API, so the same OpenAICompatibleClient
-   base works for all four. Differences are just base_url + API key env var.
+1. Remote API clients (Groq, OpenAI, HuggingFace router, OpenRouter, and
+   the AILS lab's vLLM server on pharos) -- they share an OpenAI-compatible
+   REST API, so the same OpenAICompatibleClient base works for all of them.
+   Differences are just base_url + API key env var.
 
 2. Local client (LocalTransformersClient) -- loads a HuggingFace model
    directly with `transformers` and runs inference on the local GPU. Designed
@@ -65,6 +66,10 @@ class OpenAICompatibleClient(LLMClient):
     BASE_URL: str | None = None
     API_KEY_ENV_VAR: str = "OPENAI_API_KEY"
     SETUP_HINT: str = "set OPENAI_API_KEY in your .env file"
+    # Provider-specific request fields (vLLM's chat_template_kwargs), and the
+    # name of the output cap: OpenAI's newer field, or vLLM's max_tokens.
+    EXTRA_BODY: dict | None = None
+    TOKENS_PARAM: str = "max_completion_tokens"
 
     def __init__(self, cfg: ModelConfig):
         self.cfg = cfg
@@ -88,7 +93,8 @@ class OpenAICompatibleClient(LLMClient):
                         {"role": "user", "content": user},
                     ],
                     temperature=self.cfg.temperature,
-                    max_completion_tokens=self.cfg.max_tokens,
+                    **{self.TOKENS_PARAM: self.cfg.max_tokens},
+                    **({"extra_body": self.EXTRA_BODY} if self.EXTRA_BODY else {}),
                 )
                 if resp.usage is not None:
                     self.session_tokens += int(getattr(resp.usage, "total_tokens", 0) or 0)
@@ -165,6 +171,26 @@ class OpenRouterClient(OpenAICompatibleClient):
         "Create an API key at https://openrouter.ai/keys "
         "and add OPENROUTER_API_KEY=sk-or-v1-... to your .env file."
     )
+
+
+class PharosClient(OpenAICompatibleClient):
+    """The AILS lab's vLLM server on ICARUS (pharos), OpenAI-compatible.
+
+    The key is the lab's: keep it in .env (git-ignored) as PHAROS_API_KEY,
+    never in code or a notebook. Thinking is switched off, as the local client
+    does for Qwen3, so a served Qwen3.5 answers under the same protocol as the
+    corpus models.
+    """
+    DEFAULT_BASE_URL = "https://pharos-api.ails.ece.ntua.gr:20000/v1"
+    API_KEY_ENV_VAR = "PHAROS_API_KEY"
+    SETUP_HINT = ("put PHAROS_API_KEY=<the key the lab gave you> in .env "
+                  "(git-ignored); never commit it")
+    EXTRA_BODY = {"chat_template_kwargs": {"enable_thinking": False}}
+    TOKENS_PARAM = "max_tokens"
+
+    def __init__(self, cfg: ModelConfig):
+        self.BASE_URL = os.environ.get("PHAROS_BASE_URL", self.DEFAULT_BASE_URL)
+        super().__init__(cfg)
 
 
 class LocalTransformersClient(LLMClient):
@@ -348,6 +374,8 @@ def make_client(cfg: ModelConfig) -> LLMClient:
         return HuggingFaceClient(cfg)
     if cfg.provider == "openrouter":
         return OpenRouterClient(cfg)
+    if cfg.provider == "pharos":
+        return PharosClient(cfg)
     if cfg.provider == "local":
         return LocalTransformersClient(cfg)
     raise ValueError(f"Unsupported provider: {cfg.provider}")

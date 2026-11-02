@@ -65,7 +65,7 @@ SOURCE_SCENARIOS: dict[str, tuple[str, str]] = {
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--provider",
-                   choices=["groq", "openai", "huggingface", "openrouter", "local"],
+                   choices=["groq", "openai", "huggingface", "openrouter", "pharos", "local"],
                    default="local")
     p.add_argument("--model-id", default=None)
     p.add_argument("--n-runs", type=int, default=5)
