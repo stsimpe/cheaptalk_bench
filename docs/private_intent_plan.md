@@ -211,3 +211,54 @@ python campaign.py --provider pharos --model Qwen/Qwen3.5-122B-A10B --session IN
 python campaign.py --provider pharos --model Qwen/Qwen3.5-122B-A10B --session INTENT --topology clique --topology-aware-comm-prompt --games pd --n-runs 5 --n-rounds 16 --max-new-tokens 4096 --out-root ..\pharos_runs\tok4096\intent --zip-mirror=
 python intent_report.py --roots ..\pharos_runs\tok4096\grid\Qwen3.5-122B-A10B ..\pharos_runs\tok4096\grid\Qwen3.5-122B-A10B_cycle_commfix ..\pharos_runs\tok4096\grid\Qwen3.5-122B-A10B_clique_commfix ..\pharos_runs\tok4096\intent --csv ..\pharos_runs\tok4096\intent\intent_rows.csv
 ```
+
+## Addendum, 2026-11-03: a same-day baseline control
+
+This addendum was written after the 15 runs had been read and before any
+control run. It adds one control. No rule above changes.
+
+**Why.** By rule 2, the field changes play on the ring and the clique but not
+on the star:
+
+| topology | baseline, 2026-10-30 (run means) | private intention, 2026-11-03 (run means) |
+|---|---|---|
+| star | 0.52 (0.16, 0.23, 0.97, 0.27, 0.98) | 0.49 (0.11, 0.16, 1.00, 1.00, 0.19) |
+| ring | 0.78 (0.89, 0.92, 1.00, 0.65, 0.41) | 0.19 (0.20, 0.45, 0.11, 0.14, 0.03) |
+| clique | 0.82 (1.00, 0.86, 0.53, 0.88, 0.86) | 0.28 (0.06, 0.03, 0.09, 0.19, 1.00) |
+
+The two cells ran four days apart. The requests carry no seed, and the
+records hold no server version. The records alone therefore cannot rule out
+a change on the server between the two dates.
+
+**Design.** The baseline cell is run again, unchanged, on the two topologies
+that moved:
+- Prisoner's Dilemma, cheap talk only;
+- the ring and the clique, with the corrected routing prompt;
+- 5 runs each;
+- the same model, server and cap.
+
+**Rule.**
+- On each of the two topologies, the control's cooperation (the mean of the
+  run means) is set against the old baseline's.
+- **Within 0.20 of the old baseline:** rule 2's change on that topology is
+  read as the field's.
+- **More than 0.20 away:** the server's behaviour changed between the two
+  dates on that topology. Rule 2 is then read again there, with the control
+  as the baseline and the same 0.20 threshold.
+- **Reported descriptively:** cooperation in the rounds that follow a
+  neighbour's defection. This is the measure that separated the two cells:
+
+  | topology | baseline | private intention |
+  |---|---|---|
+  | ring | 0.39 | 0.10 |
+  | clique | 0.56 | 0.07 |
+
+**Prediction.** The control stays within 0.20 of the old baseline on both
+topologies.
+
+**Reproduce.** From `cheaptalk_bench`:
+
+```
+python campaign.py --provider pharos --model Qwen/Qwen3.5-122B-A10B --session A --scenarios baseline --conditions cheap_talk --topology cycle --topology-aware-comm-prompt --games pd --n-runs 5 --n-rounds 16 --max-new-tokens 4096 --out-root ..\pharos_runs\tok4096\intent_control --zip-mirror=
+python campaign.py --provider pharos --model Qwen/Qwen3.5-122B-A10B --session A --scenarios baseline --conditions cheap_talk --topology clique --topology-aware-comm-prompt --games pd --n-runs 5 --n-rounds 16 --max-new-tokens 4096 --out-root ..\pharos_runs\tok4096\intent_control --zip-mirror=
+```
