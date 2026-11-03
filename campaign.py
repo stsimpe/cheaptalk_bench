@@ -58,6 +58,11 @@ SESSION_SCENARIOS: dict[str, list[str]] = {
     # aim to exploit its neighbours' trust. Run with --topology line
     # --n-agents 6 --topology-aware-comm-prompt --games pd --policy-agents 0.
     "MANIP": ["framing_manipulative_context"],
+    # Private intention (docs/private_intent_plan.md): every agent states, in
+    # a private field of its message call, the action it intends to play. Run
+    # on the grid of four with --games pd: --topology star, or --topology
+    # cycle / clique with --topology-aware-comm-prompt.
+    "INTENT": ["private_intent"],
 }
 
 # max_new_tokens per model, per session, copied from the star campaign so a
@@ -119,12 +124,12 @@ def plan(model: str, session: str, topology: str, n_runs: int,
                 f"explicitly, or add the model to MAX_NEW_TOKENS in campaign.py.\n"
                 f"Known models: {sorted(MAX_NEW_TOKENS)}"
             )
-        # "ALL", "C", "SRC" and "MANIP" use the session-A value: their LLM
-        # agents all send ordinary (message_policy="meaningful") messages, so
-        # they inherit the cap the star baseline used. Only the session-B
-        # framings differ, for the models whose star framing runs used a
-        # smaller cap.
-        key = "A" if session in ("ALL", "C", "SRC", "MANIP") else session
+        # "ALL", "C", "SRC", "MANIP" and "INTENT" use the session-A value:
+        # their LLM agents all send ordinary messages (INTENT's add one short
+        # private field), so they inherit the cap the star baseline used. Only
+        # the session-B framings differ, for the models whose star framing
+        # runs used a smaller cap.
+        key = "A" if session in ("ALL", "C", "SRC", "MANIP", "INTENT") else session
         max_new_tokens = MAX_NEW_TOKENS[model][key]
 
     scenarios = SESSION_SCENARIOS[session]

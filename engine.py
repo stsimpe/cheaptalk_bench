@@ -189,12 +189,14 @@ class GameEngine:
         composed: dict[int, str] = {}          # what the sender actually wrote
         blocked: dict[int, bool] = {}
         comm_reasonings: dict[int, str] = {}
+        intentions: dict[int, str | None] = {}  # private field (policy private_intent)
         for agent in agents:
             msg, written, reasoning, was_blocked = agent.send_message(history, round_num)
             messages[agent.agent_id] = msg
             composed[agent.agent_id] = written
             blocked[agent.agent_id] = was_blocked
             comm_reasonings[agent.agent_id] = reasoning
+            intentions[agent.agent_id] = agent.last_intention
 
         seen = self._messages_seen_by(messages)
 
@@ -230,6 +232,12 @@ class GameEngine:
         if any(blocked.values()) or getattr(self.cfg, "message_filter", "none") != "none":
             record["messages_composed"] = composed
             record["messages_blocked"] = blocked
+        # The private intentions (docs/private_intent_plan.md), written only
+        # when some agent was asked for one, so every other record keeps its
+        # schema. No agent is ever shown them: not the neighbours, and not the
+        # agent's own action call, which is the baseline's.
+        if any(a.message_policy == "private_intent" for a in agents):
+            record["intentions"] = intentions
         # Raw model output of every call this round (added 2026-09-22): lets a
         # failed parse be traced to its cause (e.g. finish_reason "length").
         record["llm_calls"] = {a.agent_id: a.drain_calls() for a in agents}

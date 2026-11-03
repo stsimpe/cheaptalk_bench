@@ -54,6 +54,10 @@ SCENARIOS: list[tuple[str, list[str], str, str, str]] = [
     # neighbours' trust, in the system prompt of the --policy-agents only.
     # Without messages there is no trust to win, so cheap_talk only.
     ("framing_manipulative_context", ["cheap_talk"], "meaningful", "neutral", "manipulative"),
+    # Private intention (docs/private_intent_plan.md): every agent's message
+    # call also states, in a field no one else sees, the action it intends to
+    # play. Without talk there is no message call, so cheap_talk only.
+    ("private_intent", ["cheap_talk"], "private_intent", "neutral", "none"),
 ]
 
 # scenario -> (source action, source message pool). The pool file is

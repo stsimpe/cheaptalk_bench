@@ -12,6 +12,9 @@ of cheap talk. Policies fall into two categories:
   AUGMENTATION policies (instruct the LLM to use a specific style):
     - counterfactual : message must be phrased as IF-WOULD counterfactual
     - framing        : message uses social framing (business/team/competitive)
+    - private_intent : the message is unconstrained, but the same call also
+                       states, in a private field, the action the agent
+                       intends to play (docs/private_intent_plan.md)
 
 REPLACEMENT vs AUGMENTATION:
   Replacement policies skip the LLM call (no tokens spent).
@@ -22,6 +25,8 @@ Mapping to thesis RQs:
   - irrelevant/no_sense + silence: RQ1 content-vs-channel control
   - counterfactual: RQ1 content type, RQ4 intervention prototype
   - framing (per Lore & Heydari 2024): RQ1 framing axis
+  - private_intent (per Shi et al. 2026): whether a broken promise was already
+    intended when the message was written, or decided in the action phase
 """
 from __future__ import annotations
 
@@ -37,6 +42,7 @@ MessagePolicy = Literal[
     "silence",
     "counterfactual",
     "framing",
+    "private_intent",
 ]
 
 FramingType = Literal["business", "team", "competitive", "neutral"]
@@ -95,6 +101,23 @@ FRAMING_INSTRUCTIONS: dict[str, str] = {
     "neutral": "",  # no augmentation -- equivalent to meaningful
 }
 
+# Private intention (docs/private_intent_plan.md): the message call also
+# states the action the agent intends to play, in a field no other agent ever
+# sees; the message itself is as free as under `meaningful`. The system prompt
+# and the action prompt stay the baseline's: the engine records the field and
+# shows it to no one, the agent's own action call included. The response
+# format is restated because this call returns a third field.
+PRIVATE_INTENT_INSTRUCTION = (
+    "PRIVATE FIELD FOR THIS MESSAGE: also state the action you intend to play "
+    "this round, in the field \"intended_action\". This field is private: no "
+    "other agent ever sees it. Respond with JSON:\n"
+    "{{\n"
+    "  \"reasoning\": \"<why you're sending this message>\",\n"
+    "  \"intended_action\": \"<{action_a} or {action_b}>\",\n"
+    "  \"message\": \"<one sentence, <= {max_words} words>\"\n"
+    "}}"
+)
+
 
 # Context-framing paragraphs: injected into the SYSTEM prompt (after the
 # topology paragraph), so they apply to BOTH conditions — including no_comm,
@@ -139,16 +162,26 @@ def get_context_framing_paragraph(context_framing: str) -> str:
 
 def get_extra_message_instruction(
     policy: MessagePolicy, framing_type: str = "business",
+    action_labels: tuple[str, str] | None = None, max_words: int = 20,
 ) -> str:
     """Return extra instruction appended to the message-phase user prompt.
 
     Returns "" for replacement policies and meaningful (no augmentation).
     For counterfactual/framing, returns the corresponding constraint string.
+    For private_intent, returns the private-field instruction, which names the
+    two actions as the agent is offered them (`action_labels`) and restates
+    the message length (`max_words`); every other policy ignores both.
     """
     if policy == "counterfactual":
         return COUNTERFACTUAL_INSTRUCTION
     if policy == "framing":
         return FRAMING_INSTRUCTIONS.get(framing_type, FRAMING_INSTRUCTIONS["business"])
+    if policy == "private_intent":
+        if action_labels is None:
+            raise ValueError("private_intent needs the action labels the agent is offered")
+        action_a, action_b = action_labels
+        return PRIVATE_INTENT_INSTRUCTION.format(
+            action_a=action_a, action_b=action_b, max_words=max_words)
     return ""
 
 
@@ -233,7 +266,7 @@ def apply_policy(
     which made the N replicates non-independent for this scenario. Keeping
     noise_seed in the seed keeps runs reproducible from the config.
     """
-    if policy in ("meaningful", "counterfactual", "framing"):
+    if policy in ("meaningful", "counterfactual", "framing", "private_intent"):
         return llm_message
     if policy in ("irrelevant", "no_sense"):
         seed = noise_seed * 100_000 + agent_id * 1000 + round_num

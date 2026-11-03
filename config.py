@@ -31,6 +31,7 @@ MessagePolicy = Literal[
     "silence",          # empty message
     "counterfactual",   # LLM asked for IF/WOULD framing
     "framing",          # LLM asked for social-context framing (see framing_type)
+    "private_intent",   # LLM also states, privately, the action it intends to play
 ]
 
 FramingType = Literal["business", "team", "competitive", "neutral"]

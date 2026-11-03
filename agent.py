@@ -167,6 +167,10 @@ class Agent:
     # drawn from a pool, with no model call. None is every earlier run.
     scripted_action: str | None = None
     scripted_messages: list[str] | None = None
+    # The action named in the private field of this round's message call
+    # (message_policy "private_intent", docs/private_intent_plan.md); None
+    # under every other policy. The engine records it and shows it to no one.
+    last_intention: str | None = None
     # Every LLM call of the current round: raw text, token counts, finish
     # reason, whether parsing failed. The engine drains it into the record.
     _calls: list = field(default_factory=list, repr=False)
@@ -208,6 +212,15 @@ class Agent:
             history, self.agent_id, self.neighbor_ids,
             memory_window=self.memory_window,
             shown=dict(zip(self.game.action_labels, offered)) if offered else None,
+        )
+
+    def message_instruction(self) -> str:
+        """The extra instruction this agent's message prompt carries ('' for
+        none). verify_prompts.py rebuilds the prompt through it too."""
+        return get_extra_message_instruction(
+            self.message_policy, self.framing_type,
+            action_labels=self._offered() or self.game.action_labels,
+            max_words=self.message_max_words,
         )
 
     def _safe_extract(self, raw: str, expected_field: str) -> tuple[dict, bool]:
@@ -276,6 +289,7 @@ class Agent:
         the filter models moderation inside the channel, not a change to the
         agent.
         """
+        self.last_intention = None
         # A scripted source draws its message from its pool, seeded per run,
         # agent and round exactly like the no_sense templates.
         if self.scripted_messages is not None:
@@ -294,9 +308,9 @@ class Agent:
             delivered, blocked = apply_filter(self.message_filter, canned)
             return delivered, canned, "", blocked
 
-        # Augmentation policies (counterfactual/framing) call the LLM but
-        # inject an extra instruction into the user prompt to shape output.
-        extra = get_extra_message_instruction(self.message_policy, self.framing_type)
+        # Augmentation policies (counterfactual/framing/private_intent) call
+        # the LLM but inject an extra instruction into the user prompt.
+        extra = self.message_instruction()
 
         user = build_ct_communicate_user(
             self._history_text(history), round_num, extra_instruction=extra,
@@ -306,6 +320,11 @@ class Agent:
         self._calls[-1]["parse_failed"] = _failed
         llm_message = str(parsed.get("message", "")).strip()
         reasoning = str(parsed.get("reasoning", ""))
+        if self.message_policy == "private_intent":
+            # Read as an action is: a valid answer becomes the game's own
+            # label, an invalid one is kept the way an invalid action is.
+            self.last_intention = self._canonicalize_action(
+                str(parsed.get("intended_action", "")).strip())
 
         words = llm_message.split()
         if len(words) > self.message_max_words:

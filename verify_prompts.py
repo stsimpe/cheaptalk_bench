@@ -14,7 +14,9 @@ history, for every agent, round and phase, and checks what the agent saw:
     action and payoff, and only neighbours' actions are shown;
   - the messages an agent receives are exactly its neighbours' messages;
   - the actions offered are the run's label scheme, and with renamed labels
-    the game's own names never reach an agent through the protocol text.
+    the game's own names never reach an agent through the protocol text;
+  - a private intention is asked for in the message prompt of exactly the
+    agents whose policy asks for it, and named in no other prompt.
 
 Run it on every new batch:
 
@@ -28,8 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import ExperimentConfig, ModelConfig
 from engine import make_engine
 from games import surface_labels
-from message_policies import (CONTEXT_FRAMING_PARAGRAPHS, get_extra_message_instruction,
-                              is_replacement_policy)
+from message_policies import CONTEXT_FRAMING_PARAGRAPHS, is_replacement_policy
 from prompts import build_no_comm_user, build_ct_communicate_user, build_ct_action_user
 
 STAR_WORDS = re.compile(r'central agent|peripheral|star network|hub', re.I)
@@ -85,9 +86,8 @@ def check(p, show=None):
                 # replacement policy (silence, no_sense) writes no prompt at
                 # all -- the canned message skips the model.
                 if not is_replacement_policy(a.message_policy):
-                    extra = get_extra_message_instruction(a.message_policy, a.framing_type)
                     prompts['message'] = build_ct_communicate_user(
-                        htxt, rnd, extra_instruction=extra)
+                        htxt, rnd, extra_instruction=a.message_instruction())
                 own = ('' if cfg.hide_own_message
                        else (rec['messages_composed'][i] if 'messages_composed' in rec
                              else rec['messages'][i]))
@@ -113,6 +113,14 @@ def check(p, show=None):
                 errs.append(f'r{rnd} a{i}: context framing missing')
             if not ctx and 'Context:' in sysp:
                 errs.append(f'r{rnd} a{i}: stray context framing')
+            # --- private intention: asked in the message prompt exactly when
+            # this agent's policy asks for it, and named in no other prompt
+            # (a hit there can also be a model quoting the field in a message)
+            asked = 'intended_action' in prompts.get('message', '')
+            if asked != (a.message_policy == 'private_intent'):
+                errs.append(f'r{rnd} a{i}: private intention asked: {asked}')
+            if 'intended_action' in sysp or 'intended_action' in prompts['action']:
+                errs.append(f'r{rnd} a{i}: private intention named outside the message prompt')
             # --- hidden horizon
             if HORIZON.search(full):
                 errs.append(f'r{rnd} a{i}: horizon leak: {HORIZON.search(full).group(0)!r}')
