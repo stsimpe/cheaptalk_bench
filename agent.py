@@ -163,6 +163,31 @@ def stated_probability(value) -> float | None:
     return x if 0.0 <= x <= 100.0 else None
 
 
+FORECAST_FIELDS = ("intended_action", "probabilities")
+
+
+def last_json_object(text: str) -> dict | None:
+    """The last complete JSON object in `text` that has a forecast's fields,
+    or None.
+
+    A long answer sometimes abandons its first object halfway ("But wait,
+    ...") and writes a second, complete one; extract_json reads from the first
+    brace to the last and fails on it. Only the private forecasts use this
+    (docs/forecast_probe_plan.md, addendum of 2026-11-04); the calls of the
+    game keep the parser they have always had.
+    """
+    decoder = json.JSONDecoder()
+    for start in reversed([i for i, ch in enumerate(text) if ch == "{"]):
+        for candidate in (text[start:], _repair_unescaped_newlines(text[start:])):
+            try:
+                obj, _ = decoder.raw_decode(candidate)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(obj, dict) and any(k in obj for k in FORECAST_FIELDS):
+                return obj
+    return None
+
+
 @dataclass
 class Agent:
     agent_id: int
@@ -394,7 +419,20 @@ class Agent:
             own_message=own_message, received_messages=received_messages,
         )
         raw = self._llm("forecast_before" if own_message is None else "forecast_after", user)
-        parsed, _failed = self._safe_extract(raw, "intended_action")
+        try:
+            parsed = extract_json(raw)
+        except ValueError:
+            parsed = None
+        if not (isinstance(parsed, dict) and any(k in parsed for k in FORECAST_FIELDS)):
+            # An answer that started again: read its last complete object.
+            recovered = last_json_object(raw)
+            if recovered is not None:
+                parsed = recovered
+                self._calls[-1]["parse_recovered"] = True
+        if parsed is None:
+            parsed, _failed = self._safe_extract(raw, "intended_action")
+        else:
+            _failed = False
         self._calls[-1]["parse_failed"] = _failed
         stated = parsed.get("probabilities")
         # A key is read by the number in it: "1", "#1" and "neighbor 1" alike.

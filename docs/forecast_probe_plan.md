@@ -313,3 +313,37 @@ python forecast_report.py --roots ..\pharos_runs\tok4096\grid\Qwen3.5-122B-A10B 
 On 11-03 a baseline run took 3-4 minutes on the lab server. With twice the
 calls, a run should take 6-8 minutes, so a cell takes 30-40 minutes. Measure
 on the smoke run before relying on this.
+
+## Addendum, 2026-11-04: what the smoke run changed
+
+This was written after the 2-round smoke run (`pharos_runs/smoke_probe`, on
+`a5e412d`) and before the first run of the cell. Nothing else in the plan
+changes.
+
+- **The game was the baseline's.**
+  - The round-1 message prompt tokens were 464 for all four agents, as in
+    the baseline.
+  - `verify_prompts.py` found nothing in the 40 prompts.
+  - Every call finished normally.
+- **15 of the 16 forecast calls parsed.**
+- **The one failure.** It was the hub's forecast after the messages in round
+  1, an answer of 2,035 tokens.
+  - The answer abandoned its first JSON object halfway through its reasoning
+    and wrote a second, complete one at the end.
+  - The parser reads from the first brace to the last, so it failed. A valid
+    answer was lost: Defect, with 90, 95 and 90.
+- **The change.** A forecast call that does not parse is read from the last
+  complete JSON object in its answer that carries a forecast's fields.
+  - The call is marked `parse_recovered`, and rule 1 reports how many calls
+    were read this way.
+  - The calls of the game keep the parser they have always had, so the game
+    is still the baseline's.
+- **Why it matters.** The failure fell on a long deliberation, the hub
+  weighing whether to exploit its neighbours. Losing such answers would not
+  be random.
+- **Timing.**
+  - The smoke run took 55.5 s for its 32 calls, 1.7 s per call alone on the
+    server.
+  - A 16-round run has 256 calls, so it takes about 7-8 minutes alone.
+  - When the three cells run side by side, earlier lanes ran at 3-5 s per
+    call. That makes about 13-21 minutes per run, and 1-2 hours per cell.

@@ -66,6 +66,7 @@ def load(roots: list[str]):
     """Decision rows (one per valid LLM agent-round) and pair rows (one per
     forecast of a neighbour, probe runs only)."""
     decisions, pairs, tokens = [], [], defaultdict(set)
+    recovered = Counter()       # forecast calls read from a restarted answer
     for root in roots:
         for f in sorted(glob.glob(os.path.join(root, "**", "cheap_talk", "*_cheaptalk_run*.json"),
                                   recursive=True)):
@@ -93,6 +94,9 @@ def load(roots: list[str]):
                         for c in r.get("llm_calls", {}).get(a, []):
                             if c.get("phase") == "message" and c.get("prompt_tokens") is not None:
                                 tokens[(model, cfg["game"], topo, scenario, int(a))].add(c["prompt_tokens"])
+                    recovered[(model, cfg["game"], topo)] += sum(
+                        bool(c.get("parse_recovered")) for c in r.get("llm_calls", {}).get(a, [])
+                        if str(c.get("phase", "")).startswith("forecast"))
                     if act not in game.action_labels:
                         continue                  # invalid decisions are out, as everywhere
                     f_a = (fc or {}).get(a) or {}
@@ -134,7 +138,7 @@ def load(roots: list[str]):
                             and prev["actions"].get(j) != coop,
                             receiver_coop=row["coop"], message=msg))
                 prev = r
-    return decisions, pairs, tokens
+    return decisions, pairs, tokens, recovered
 
 
 def _unit(probs: dict) -> bool:
@@ -169,7 +173,7 @@ def main() -> None:
     ap.add_argument("--roots", nargs="+", required=True)
     ap.add_argument("--csv", default=None, help="Write every forecast pair, with its message.")
     args = ap.parse_args()
-    decisions, pairs, tokens = load(args.roots)
+    decisions, pairs, tokens, recovered = load(args.roots)
     if not decisions:
         raise SystemExit("no baseline or forecast_probe cheap-talk runs under these roots")
     if args.csv and pairs:
@@ -198,8 +202,11 @@ def main() -> None:
             v = [x for x in probe if t in ("all", x["topology"])]
             vb, va = sum(x["valid_before"] for x in v), sum(x["valid_after"] for x in v)
             r1 = r1 and vb >= MIN_VALID * len(v) and va >= MIN_VALID * len(v)
+            rec = sum(n for k, n in recovered.items()
+                      if k[:2] == (model, game) and t in ("all", k[2]))
             print(f"     {t:6}: {share(vb, len(v))} / {share(va, len(v))}; "
-                  f"on a 0-1 scale {sum(x['unit_scale'] for x in v)}")
+                  f"on a 0-1 scale {sum(x['unit_scale'] for x in v)}; "
+                  f"read from a restarted answer {rec}")
         print(f"   -> {'passes' if r1 else 'FAILS: the forecasts were not given; R2-R5 are not read'}")
         print("R1 the game: round-1 message prompt tokens, forecast_probe against baseline")
         # A check that cannot be made does not pass: no tokens recorded, or no
