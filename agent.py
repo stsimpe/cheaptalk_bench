@@ -35,6 +35,7 @@ from prompts import (
     build_no_comm_user,
     build_ct_communicate_user,
     build_ct_action_user,
+    build_forecast_user,
     format_history,
 )
 
@@ -141,6 +142,25 @@ def extract_json(text: str) -> dict:
         return result
 
     raise ValueError(f"Could not parse JSON from model output:\n{text}")
+
+
+def stated_probability(value) -> float | None:
+    """A stated probability as a number from 0 to 100, or None.
+
+    The private forecasts (docs/forecast_probe_plan.md) ask for 0-100. A
+    number, or a string such as "70" or "70%", is read as given; anything
+    else, or a value outside 0-100, is None. Nothing is rescaled: an answer
+    on a 0-1 scale is kept as it was written, and the report flags it.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        value = value.strip().rstrip("%").strip()
+    try:
+        x = float(value)
+    except (TypeError, ValueError):
+        return None
+    return x if 0.0 <= x <= 100.0 else None
 
 
 @dataclass
@@ -350,6 +370,47 @@ class Agent:
             self._history_text(history), round_num, own_message, received_messages
         )
         return self._generate_action(user)
+
+    # --- Private forecasts (docs/forecast_probe_plan.md) ---
+
+    def forecast(
+        self,
+        history: list[dict],
+        round_num: int,
+        own_message: str | None = None,
+        received_messages: dict[int, str] | None = None,
+    ) -> dict | None:
+        """One private-forecast call: before the messages when `own_message`
+        is None, after them otherwise, on the context the next call of the
+        game sees. Returns the intended action, read as an action is, and the
+        stated probability that each neighbour plays the cooperative action.
+        Nothing here reaches a later prompt. A scripted source makes no call.
+        """
+        if self.scripted_action is not None:
+            return None
+        user = build_forecast_user(
+            self._history_text(history), round_num, self.neighbor_ids,
+            self._offered() or self.game.action_labels,
+            own_message=own_message, received_messages=received_messages,
+        )
+        raw = self._llm("forecast_before" if own_message is None else "forecast_after", user)
+        parsed, _failed = self._safe_extract(raw, "intended_action")
+        self._calls[-1]["parse_failed"] = _failed
+        stated = parsed.get("probabilities")
+        # A key is read by the number in it: "1", "#1" and "neighbor 1" alike.
+        by_id: dict[int, object] = {}
+        if isinstance(stated, dict):
+            for key, value in stated.items():
+                m = re.search(r"\d+", str(key))
+                if m:
+                    by_id.setdefault(int(m.group(0)), value)
+        return {
+            "intended_action": self._canonicalize_action(
+                str(parsed.get("intended_action", "")).strip()),
+            "probabilities": {str(nb): stated_probability(by_id.get(nb))
+                              for nb in self.neighbor_ids},
+            "reasoning": str(parsed.get("reasoning", "")),
+        }
 
     # --- Helpers ---
 

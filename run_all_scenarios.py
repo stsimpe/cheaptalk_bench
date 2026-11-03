@@ -58,6 +58,11 @@ SCENARIOS: list[tuple[str, list[str], str, str, str]] = [
     # call also states, in a field no one else sees, the action it intends to
     # play. Without talk there is no message call, so cheap_talk only.
     ("private_intent", ["cheap_talk"], "private_intent", "neutral", "none"),
+    # Private forecasts (docs/forecast_probe_plan.md): the baseline, with two
+    # private calls per agent and round that ask the action it intends and
+    # how likely each neighbour is to cooperate. Their answers reach no
+    # prompt, so the game is the baseline's. Cheap talk only.
+    ("forecast_probe", ["cheap_talk"], "meaningful", "neutral", "none"),
 ]
 
 # scenario -> (source action, source message pool). The pool file is
@@ -68,6 +73,9 @@ SOURCE_SCENARIOS: dict[str, tuple[str, str]] = {
     "source_cd": ("defect", "cooperative"),
     "source_hd": ("defect", "hostile"),
 }
+
+# Scenarios that add the private forecasts (docs/forecast_probe_plan.md).
+PROBE_SCENARIOS = {"forecast_probe"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -367,6 +375,7 @@ def main():
                     action_labels=args.action_labels,
                     topology_aware_comm_prompt=args.topology_aware_comm_prompt,
                     silent_topology=args.silent_topology,
+                    forecast_probe=sc_label in PROBE_SCENARIOS,
                     scenario=sc_label,
                     action_retries=args.action_retries,
                     out_dir=sc_out_dir,

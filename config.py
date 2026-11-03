@@ -121,6 +121,13 @@ class ExperimentConfig:
     # topology paragraph and the routing sentence are replaced by text with
     # no shape and no size. Routing is unchanged. False is every earlier run.
     silent_topology: bool = False
+    # Private forecasts (docs/forecast_probe_plan.md): two more calls per
+    # agent and round, one before the messages and one after them, ask the
+    # action the agent intends to play and how likely each neighbour is to
+    # play the cooperative action. The answers are recorded and reach no
+    # prompt of the game, so play is the baseline's. False is every earlier
+    # run.
+    forecast_probe: bool = False
     # Scripted source (the contagion experiment, docs/contagion_plan.md). The
     # agent `source_agent` makes no model call: it plays `source_action`
     # ("cooperate" or "defect") every round and sends a message drawn from the

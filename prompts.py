@@ -234,6 +234,57 @@ pairwise game on every edge you have.
 """
 
 
+# -------------------- PRIVATE FORECASTS --------------------
+
+# docs/forecast_probe_plan.md. Two extra calls per agent and round: one on the
+# context of the message call, before any message is sent, and one on the
+# context of the action call, after the messages are read. The answers are
+# recorded and shown to no one, and no later prompt is built from them, so the
+# game is the baseline's. The response format is stated here because the
+# system prompt describes only the message and the action.
+FORECAST_BEFORE_USER = """### History of past rounds
+
+{history}
+
+### Current round: {round_num} — PRIVATE FORECAST
+
+No messages have been sent yet this round. You will be asked for your message \
+and for your action separately; this is neither. No other agent ever sees this \
+answer, and it does not change your score.
+
+{questions}"""
+
+
+FORECAST_AFTER_USER = """### History of past rounds
+
+{history}
+
+### Current round: {round_num} — PRIVATE FORECAST
+
+You just sent the following message: "{own_message}"
+
+Messages you received this round:
+{received_messages}
+
+You will be asked for your action separately; this is not it. No other agent \
+ever sees this answer, and it does not change your score.
+
+{questions}"""
+
+
+FORECAST_QUESTIONS = """Answer two questions:
+1. Which action do you intend to play this round?
+2. For each neighbor, how likely is it, from 0 to 100, that they play {action_a} \
+this round?
+
+Respond with JSON:
+{{
+  "reasoning": "<your analysis>",
+  "intended_action": "<{action_a} or {action_b}>",
+  "probabilities": {{{slots}}}
+}}"""
+
+
 def build_system_prompt(
     game: Game,
     condition: str,
@@ -305,4 +356,38 @@ def build_ct_action_user(
         round_num=round_num,
         own_message=own_message,
         received_messages=rm_str,
+    )
+
+
+def build_forecast_user(
+    history_text: str,
+    round_num: int,
+    neighbor_ids: list[int],
+    action_labels: tuple[str, str],
+    own_message: str | None = None,
+    received_messages: dict[int, str] | None = None,
+) -> str:
+    """The private-forecast prompt (docs/forecast_probe_plan.md): before the
+    messages when `own_message` is None, after them otherwise. It asks about
+    exactly `neighbor_ids`, and shows the received messages as the action
+    prompt shows them."""
+    action_a, action_b = action_labels
+    slots = ", ".join(f'"{nb}": <0-100>' for nb in neighbor_ids)
+    questions = FORECAST_QUESTIONS.format(action_a=action_a, action_b=action_b, slots=slots)
+    if own_message is None:
+        return FORECAST_BEFORE_USER.format(
+            history=history_text, round_num=round_num, questions=questions)
+    if not received_messages:
+        rm_str = "(no messages received this round)"
+    else:
+        rm_str = "\n".join(
+            f"  From neighbor #{sender}: \"{msg}\""
+            for sender, msg in received_messages.items()
+        )
+    return FORECAST_AFTER_USER.format(
+        history=history_text,
+        round_num=round_num,
+        own_message=own_message,
+        received_messages=rm_str,
+        questions=questions,
     )

@@ -190,6 +190,14 @@ class GameEngine:
         blocked: dict[int, bool] = {}
         comm_reasonings: dict[int, str] = {}
         intentions: dict[int, str | None] = {}  # private field (policy private_intent)
+        # Private forecasts (docs/forecast_probe_plan.md): one call before the
+        # messages and one after them, each on the context the next call of
+        # the game sees. They are recorded and reach no prompt.
+        probe = getattr(self.cfg, "forecast_probe", False)
+        forecasts: dict[int, dict] = {}
+        if probe:
+            for agent in agents:
+                forecasts[agent.agent_id] = {"before": agent.forecast(history, round_num)}
         for agent in agents:
             msg, written, reasoning, was_blocked = agent.send_message(history, round_num)
             messages[agent.agent_id] = msg
@@ -199,6 +207,12 @@ class GameEngine:
             intentions[agent.agent_id] = agent.last_intention
 
         seen = self._messages_seen_by(messages)
+        if probe:
+            for agent in agents:
+                own = ("" if getattr(self.cfg, "hide_own_message", False)
+                       else composed[agent.agent_id])
+                forecasts[agent.agent_id]["after"] = agent.forecast(
+                    history, round_num, own, seen[agent.agent_id])
 
         actions: dict[int, str] = {}
         action_reasonings: dict[int, str] = {}
@@ -238,6 +252,10 @@ class GameEngine:
         # agent's own action call, which is the baseline's.
         if any(a.message_policy == "private_intent" for a in agents):
             record["intentions"] = intentions
+        # The private forecasts, written only when the run asked for them, so
+        # every other record keeps its schema.
+        if probe:
+            record["forecasts"] = forecasts
         # Raw model output of every call this round (added 2026-09-22): lets a
         # failed parse be traced to its cause (e.g. finish_reason "length").
         record["llm_calls"] = {a.agent_id: a.drain_calls() for a in agents}

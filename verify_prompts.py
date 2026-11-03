@@ -16,7 +16,10 @@ history, for every agent, round and phase, and checks what the agent saw:
   - the actions offered are the run's label scheme, and with renamed labels
     the game's own names never reach an agent through the protocol text;
   - a private intention is asked for in the message prompt of exactly the
-    agents whose policy asks for it, and named in no other prompt.
+    agents whose policy asks for it, and named in no other prompt;
+  - private forecasts are recorded in exactly the runs that ask for them,
+    asked in their own two prompts about exactly the agent's neighbours, and
+    absent from every prompt of the game.
 
 Run it on every new batch:
 
@@ -31,7 +34,8 @@ from config import ExperimentConfig, ModelConfig
 from engine import make_engine
 from games import surface_labels
 from message_policies import CONTEXT_FRAMING_PARAGRAPHS, is_replacement_policy
-from prompts import build_no_comm_user, build_ct_communicate_user, build_ct_action_user
+from prompts import (build_no_comm_user, build_ct_communicate_user, build_ct_action_user,
+                     build_forecast_user)
 
 STAR_WORDS = re.compile(r'central agent|peripheral|star network|hub', re.I)
 HORIZON = re.compile(r'\b16 rounds|\bof 16\b|sixteen|total (number of )?rounds|final round|rounds remain|remaining rounds', re.I)
@@ -92,6 +96,13 @@ def check(p, show=None):
                        else (rec['messages_composed'][i] if 'messages_composed' in rec
                              else rec['messages'][i]))
                 prompts['action'] = build_ct_action_user(htxt, rnd, own, rec['messages_seen_by'][i])
+                # The private forecasts (docs/forecast_probe_plan.md), on the
+                # contexts of the message call and of the action call.
+                if getattr(cfg, 'forecast_probe', False) and a.scripted_action is None:
+                    names = a._offered() or eng.game.action_labels
+                    prompts['forecast_before'] = build_forecast_user(htxt, rnd, a.neighbor_ids, names)
+                    prompts['forecast_after'] = build_forecast_user(
+                        htxt, rnd, a.neighbor_ids, names, own, rec['messages_seen_by'][i])
             n_prompts += len(prompts)
             full = '\n'.join(prompts.values())
             # --- network description
@@ -121,6 +132,25 @@ def check(p, show=None):
                 errs.append(f'r{rnd} a{i}: private intention asked: {asked}')
             if 'intended_action' in sysp or 'intended_action' in prompts['action']:
                 errs.append(f'r{rnd} a{i}: private intention named outside the message prompt')
+            # --- private forecasts: recorded exactly in the runs that ask for
+            # them, asked about exactly this agent's neighbours, and absent
+            # from every prompt of the game
+            if getattr(cfg, 'forecast_probe', False) != ('forecasts' in rec):
+                errs.append(f'r{rnd} a{i}: forecasts recorded: {"forecasts" in rec}')
+            game_text = '\n'.join(v for k, v in prompts.items() if not k.startswith('forecast'))
+            if 'PRIVATE FORECAST' in game_text or '<0-100>' in game_text:
+                errs.append(f'r{rnd} a{i}: forecast wording in a prompt of the game')
+            for k in ('forecast_before', 'forecast_after'):
+                if k in prompts:
+                    about = sorted(int(x) for x in re.findall(r'"(\d+)": <0-100>', prompts[k]))
+                    if about != sorted(nbs):
+                        errs.append(f'r{rnd} a{i}: {k} asks about {about}, neighbours {nbs}')
+            if 'forecast_after' in prompts:
+                recv_fa, recv_act = (re.findall(r'From neighbor #(\d+): "(.*)"',
+                                                prompts[k].split('### Current round')[1])
+                                     for k in ('forecast_after', 'action'))
+                if recv_fa != recv_act:
+                    errs.append(f'r{rnd} a{i}: the forecast after the messages shows other messages')
             # --- hidden horizon
             if HORIZON.search(full):
                 errs.append(f'r{rnd} a{i}: horizon leak: {HORIZON.search(full).group(0)!r}')
