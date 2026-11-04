@@ -1,8 +1,8 @@
 """Private forecasts: the reading rules of docs/forecast_probe_plan.md.
 
-Reads the cheap-talk runs of the `baseline` and `forecast_probe` scenarios
-under the given roots and reports, per model and topology, the plan's
-outcomes as its rules read them:
+Reads the cheap-talk runs of every probe cell under the given roots, with the
+grid cell whose game it leaves untouched (PROBE_CELLS), and reports, per model
+and probe cell, the plan's outcomes as its rules read them:
 
   R1  compliance   valid forecast calls, before and after the messages; the
                    game untouched (round-1 message prompt tokens, cooperation
@@ -18,6 +18,9 @@ outcomes as its rules read them:
                    the changes of mind fell, L, and the noise floor
   R5  forgiveness  after a neighbour's defection, the receiver's forecast of
                    that neighbour and its cooperation (descriptive)
+
+When both probe cells are given, the team frame in the messages is then read
+against ordinary talk by the rules of docs/forecast_team_plan.md (T2-T5).
 
 A promise is a message that signal_rules.is_signal marks as advocating
 cooperation now, as in intent_report.py; the plan's hand check covers every
@@ -43,6 +46,8 @@ from intent_report import category, plain_grid, promise  # noqa: E402
 
 MIN_VALID, MIN_BROKEN = 0.90, 20
 BANDS = ((0, 34), (34, 67), (67, 101))       # forecast before: 0-33, 34-66, 67-100
+# Each probe cell, and the grid cell whose game it leaves untouched.
+PROBE_CELLS = {"forecast_probe": "baseline", "framing_team_probe": "framing_team"}
 
 
 def mean(xs):
@@ -76,8 +81,10 @@ def load(roots: list[str]):
                 d = json.load(fh)
             cfg = d["config"]
             scenario = cfg.get("scenario")
-            if scenario not in ("baseline", "forecast_probe") or not plain_grid(cfg):
+            if scenario not in {*PROBE_CELLS, *PROBE_CELLS.values()} or not plain_grid(cfg):
                 continue
+            cell = scenario if scenario in PROBE_CELLS else next(
+                k for k, v in PROBE_CELLS.items() if v == scenario)
             game = GAMES[cfg["game"]]
             coop = game.cooperative_action
             model = cfg["model"]["model_id"].split("/")[-1]
@@ -94,7 +101,7 @@ def load(roots: list[str]):
                         for c in r.get("llm_calls", {}).get(a, []):
                             if c.get("phase") == "message" and c.get("prompt_tokens") is not None:
                                 tokens[(model, cfg["game"], topo, scenario, int(a))].add(c["prompt_tokens"])
-                    recovered[(model, cfg["game"], topo)] += sum(
+                    recovered[(model, cfg["game"], topo, scenario)] += sum(
                         bool(c.get("parse_recovered")) for c in r.get("llm_calls", {}).get(a, [])
                         if str(c.get("phase", "")).startswith("forecast"))
                     if act not in game.action_labels:
@@ -102,7 +109,7 @@ def load(roots: list[str]):
                     f_a = (fc or {}).get(a) or {}
                     before, after = f_a.get("before") or {}, f_a.get("after") or {}
                     row = dict(
-                        model=model, game=cfg["game"], topology=topo, scenario=scenario,
+                        model=model, game=cfg["game"], topology=topo, scenario=scenario, cell=cell,
                         root=root, file=run[1], round=r["round"], agent=int(a),
                         hub=topo == "star" and int(a) == 0,
                         promise=promise(r["messages"].get(a, ""), cfg["game"]),
@@ -127,7 +134,7 @@ def load(roots: list[str]):
                         pa = after.get("probabilities", {}).get(j)
                         aj = acts.get(j)
                         pairs.append(dict(
-                            model=model, game=cfg["game"], topology=topo, root=root, file=run[1],
+                            model=model, game=cfg["game"], topology=topo, cell=cell, root=root, file=run[1],
                             round=r["round"], receiver=int(a), sender=int(j),
                             receiver_hub=row["hub"], before=pb, after=pa,
                             shift=None if pb is None or pa is None else pa - pb,
@@ -168,6 +175,62 @@ def matched_gap(kept, broken):
     return (num / den if den else float("nan")), "; ".join(parts)
 
 
+def compare_team(model, game, decisions, pairs):
+    """docs/forecast_team_plan.md, rules 2-5: the team frame in the messages
+    against ordinary talk, both read through the same private forecasts."""
+    labels, coop = GAMES[game].action_labels, GAMES[game].cooperative_action
+    team, plain = "framing_team_probe", "forecast_probe"
+    dec = {c: [x for x in decisions if (x["model"], x["game"], x["cell"]) == (model, game, c) and x["probe"]]
+           for c in (team, plain)}
+    prs = {c: [p for p in pairs if (p["model"], p["game"], p["cell"]) == (model, game, c)
+               and p["shift"] is not None] for c in (team, plain)}
+    name = {team: "team", plain: "ordinary"}
+    print(f"\n######## {model} {game.upper()}: the team frame in the messages against ordinary talk")
+
+    # ---- T2: is team talk believed?
+    r1 = {c: [p for p in prs[c] if p["round"] == 1 and p["promise"]] for c in dec}
+    a = {c: mean(p["after"] for p in r1[c]) for c in dec}
+    print(f"T2 round 1, forecast after a promise: team {a[team]:.1f} (n={len(r1[team])}), "
+          f"ordinary {a[plain]:.1f} (n={len(r1[plain])}); shift team {mean(p['shift'] for p in r1[team]):+.1f}, "
+          f"ordinary {mean(p['shift'] for p in r1[plain]):+.1f}")
+    print("   -> " + ("team talk is believed as ordinary talk" if abs(a[team] - a[plain]) <= 10 else
+                      "team talk is discounted" if a[plain] - a[team] >= 20 else "partly"))
+    for t in sorted({p["topology"] for p in r1[team]}):
+        print(f"     {t:6}: team {mean(p['after'] for p in r1[team] if p['topology'] == t):.1f}, "
+              f"ordinary {mean(p['after'] for p in r1[plain] if p['topology'] == t):.1f}")
+
+    # ---- T3: are its lies seen?
+    for c in (team, plain):
+        prom = [p for p in prs[c] if p["promise"] and p["sender_valid"]]
+        kept, broken = [p for p in prom if p["sender_coop"]], [p for p in prom if not p["sender_coop"]]
+        gap, parts = matched_gap(kept, broken)
+        print(f"T3 {name[c]:8}: kept {len(kept)}, broken {len(broken)}; matched gap {gap:.1f} [{parts}]; "
+              f"broken promises believed (after >= 50) {share(sum(p['after'] >= 50 for p in broken), len(broken))}, "
+              f"their receivers cooperated {share(sum(p['receiver_coop'] for p in broken), len(broken))}")
+        if c == team:
+            print("   -> " + (f"too few broken promises to read (fewer than {MIN_BROKEN})" if len(broken) < MIN_BROKEN
+                              else "lies are believed as much as kept promises" if gap < 10
+                              else "lies are seen through" if gap >= 25 else "partly"))
+
+    # ---- T4: does team talk repair a betrayal?
+    rep = {c: [p for p in prs[c] if p["sender_defected_before"] and p["promise"]] for c in dec}
+    s = {c: mean(p["shift"] for p in rep[c]) for c in dec}
+    print(f"T4 a defector's new promise, shift of its forecast: team {s[team]:+.1f} (n={len(rep[team])}), "
+          f"ordinary {s[plain]:+.1f} (n={len(rep[plain])}); forecast after: team "
+          f"{mean(p['after'] for p in rep[team]):.1f}, ordinary {mean(p['after'] for p in rep[plain]):.1f}")
+    print("   -> " + ("team talk does not repair" if s[team] < 15 else
+                      "team talk repairs as ordinary talk does" if s[team] >= 25 else "partly"))
+
+    # ---- T5: does the sender mean it?
+    for c in (team, plain):
+        d = dec[c]
+        other = [x for x in d if x["int_before"] in labels and x["int_before"] != coop]
+        pre = sum(x["category"] == "premeditated" for x in d)
+        com = sum(x["category"] == "change of mind" for x in d)
+        print(f"T5 {name[c]:8}: messages that promise {share(sum(x['promise'] for x in d), len(d))}; "
+              f"L {share(sum(x['promise'] for x in other), len(other))}; P {share(pre, pre + com)}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--roots", nargs="+", required=True)
@@ -175,7 +238,7 @@ def main() -> None:
     args = ap.parse_args()
     decisions, pairs, tokens, recovered = load(args.roots)
     if not decisions:
-        raise SystemExit("no baseline or forecast_probe cheap-talk runs under these roots")
+        raise SystemExit("no cell of PROBE_CELLS, probe or grid, under these roots")
     if args.csv and pairs:
         with open(args.csv, "w", newline="", encoding="utf-8") as fh:
             w = csv.DictWriter(fh, fieldnames=list(pairs[0]))
@@ -183,17 +246,19 @@ def main() -> None:
             w.writerows(pairs)
         print(f"{len(pairs)} forecast pairs -> {args.csv}")
 
-    for model, game in sorted({(x["model"], x["game"]) for x in decisions}):
-        probe = [x for x in decisions if (x["model"], x["game"]) == (model, game) and x["probe"]]
+    readable = set()        # the probe cells whose rule 1 passed
+    for model, game, cell in sorted({(x["model"], x["game"], x["cell"]) for x in decisions}):
+        here = lambda x: (x["model"], x["game"], x["cell"]) == (model, game, cell)
+        probe = [x for x in decisions if here(x) and x["probe"]]
         if not probe:
-            print(f"{model} {game}: no forecast_probe runs under these roots: nothing to read")
+            print(f"{model} {game}: no {cell} runs under these roots: nothing to read")
             continue
-        base = [x for x in decisions if (x["model"], x["game"]) == (model, game)
-                and x["scenario"] == "baseline"]
-        pp = [x for x in pairs if (x["model"], x["game"]) == (model, game)]
+        base_name = PROBE_CELLS[cell]
+        base = [x for x in decisions if here(x) and x["scenario"] == base_name]
+        pp = [x for x in pairs if here(x)]
         topos = sorted({x["topology"] for x in probe})
         coop = GAMES[game].cooperative_action
-        print(f"\n######## {model} {game.upper()}")
+        print(f"\n######## {model} {game.upper()} {cell}")
 
         # ---- R1
         r1 = True
@@ -203,12 +268,12 @@ def main() -> None:
             vb, va = sum(x["valid_before"] for x in v), sum(x["valid_after"] for x in v)
             r1 = r1 and vb >= MIN_VALID * len(v) and va >= MIN_VALID * len(v)
             rec = sum(n for k, n in recovered.items()
-                      if k[:2] == (model, game) and t in ("all", k[2]))
+                      if k[:2] == (model, game) and k[3] == cell and t in ("all", k[2]))
             print(f"     {t:6}: {share(vb, len(v))} / {share(va, len(v))}; "
                   f"on a 0-1 scale {sum(x['unit_scale'] for x in v)}; "
                   f"read from a restarted answer {rec}")
         print(f"   -> {'passes' if r1 else 'FAILS: the forecasts were not given; R2-R5 are not read'}")
-        print("R1 the game: round-1 message prompt tokens, forecast_probe against baseline")
+        print(f"R1 the game: round-1 message prompt tokens, {cell} against {base_name}")
         # A check that cannot be made does not pass: no tokens recorded, or no
         # baseline tree given for a topology, stops the reading as a
         # difference would.
@@ -219,8 +284,8 @@ def main() -> None:
                 same = False
                 print(f"     {t:6}: no prompt tokens recorded")
             for a in keys:
-                tp = tokens.get((model, game, t, "forecast_probe", a), set())
-                tb = tokens.get((model, game, t, "baseline", a), set())
+                tp = tokens.get((model, game, t, cell, a), set())
+                tb = tokens.get((model, game, t, base_name, a), set())
                 ok = bool(tp) and tp == tb
                 same = same and ok
                 print(f"     {t:6} agent {a}: probe {sorted(tp) or '(none)'} baseline {sorted(tb) or '(none)'}"
@@ -228,9 +293,9 @@ def main() -> None:
         print(f"   -> {'equal on every topology' if same else 'NOT SHOWN EQUAL: nothing else is read until this is explained'}")
         print("     cooperation (run means), and broken promises:")
         for t in topos:
-            sel = [("forecast_probe", [x for x in probe if x["topology"] == t])]
+            sel = [(cell, [x for x in probe if x["topology"] == t])]
             for root in sorted({x["root"] for x in base if x["topology"] == t}):
-                sel.append((f"baseline {root}", [x for x in base if x["topology"] == t and x["root"] == root]))
+                sel.append((f"{base_name} {root}", [x for x in base if x["topology"] == t and x["root"] == root]))
             for lab, v in sel:
                 m = run_means(v)
                 prom = [x for x in v if x["promise"]]
@@ -337,6 +402,13 @@ def main() -> None:
             brier = mean((x[when] / 100 - x["sender_coop"]) ** 2 for x in v)
             print(f"calibration {when:6}: Brier {brier:.3f}; mean forecast {mean(x[when] for x in v) / 100:.2f} "
                   f"against cooperation {mean(x['sender_coop'] for x in v):.2f} (n={len(v)})")
+        readable.add((model, game, cell))
+
+    for model, game in sorted({(m, g) for m, g, c in readable if c == "framing_team_probe"}):
+        if (model, game, "forecast_probe") in readable:
+            compare_team(model, game, decisions, pairs)
+        else:
+            print(f"\n{model} {game}: the team plan's rules need the forecast_probe cell too; give its tree")
 
 
 if __name__ == "__main__":

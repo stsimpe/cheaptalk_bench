@@ -63,6 +63,11 @@ SCENARIOS: list[tuple[str, list[str], str, str, str]] = [
     # how likely each neighbour is to cooperate. Their answers reach no
     # prompt, so the game is the baseline's. Cheap talk only.
     ("forecast_probe", ["cheap_talk"], "meaningful", "neutral", "none"),
+    # The same forecasts under the team frame in the messages
+    # (docs/forecast_team_plan.md): framing_team, with the two private calls
+    # of forecast_probe. Their answers reach no prompt, so the game is
+    # framing_team's. Cheap talk only.
+    ("framing_team_probe", ["cheap_talk"], "framing", "team", "none"),
 ]
 
 # scenario -> (source action, source message pool). The pool file is
@@ -74,8 +79,9 @@ SOURCE_SCENARIOS: dict[str, tuple[str, str]] = {
     "source_hd": ("defect", "hostile"),
 }
 
-# Scenarios that add the private forecasts (docs/forecast_probe_plan.md).
-PROBE_SCENARIOS = {"forecast_probe"}
+# Scenarios that add the private forecasts (docs/forecast_probe_plan.md,
+# docs/forecast_team_plan.md).
+PROBE_SCENARIOS = {"forecast_probe", "framing_team_probe"}
 
 
 def parse_args() -> argparse.Namespace:

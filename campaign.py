@@ -68,6 +68,9 @@ SESSION_SCENARIOS: dict[str, list[str]] = {
     # on the grid of four with --games pd: --topology star, or --topology
     # cycle / clique with --topology-aware-comm-prompt.
     "PROBE": ["forecast_probe"],
+    # The same forecasts under the team frame in the messages
+    # (docs/forecast_team_plan.md). Run as PROBE is run.
+    "PROBE_TEAM": ["framing_team_probe"],
 }
 
 # max_new_tokens per model, per session, copied from the star campaign so a
@@ -133,8 +136,10 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         # value: their LLM agents all send ordinary messages (INTENT's add one
         # short private field, PROBE's two private calls), so they inherit the
         # cap the star baseline used. Only the session-B framings differ, for
-        # the models whose star framing runs used a smaller cap.
-        key = "A" if session in ("ALL", "C", "SRC", "MANIP", "INTENT", "PROBE") else session
+        # the models whose star framing runs used a smaller cap; PROBE_TEAM's
+        # messages carry the session-B team frame, so it takes that value.
+        key = ("A" if session in ("ALL", "C", "SRC", "MANIP", "INTENT", "PROBE")
+               else "B" if session == "PROBE_TEAM" else session)
         max_new_tokens = MAX_NEW_TOKENS[model][key]
 
     scenarios = SESSION_SCENARIOS[session]
