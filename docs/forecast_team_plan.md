@@ -208,3 +208,165 @@ No smoke run is needed. The code path is the forecast probe's, smoke-tested on
 2026-11-04, and this cell adds only a scenario. With three cells side by side,
 the forecast probe took 10-11 minutes per run, so this cell should take about an
 hour.
+
+## Results, 2026-11-05
+
+Read on 2026-11-05 after all 15 runs, and written up on 2026-11-07. Every
+reading is exploratory, as fixed above. The ordinary cell is the forecast
+probe's; its results are in `docs/forecast_probe_plan.md`.
+
+**Runs and checks.**
+- The 15 runs ran on 2026-11-05, 00:49-01:42, in three lanes in parallel, on
+  `889d72d`. That commit was pushed before the first run.
+- A run took 597-630 s, or 2.3-2.5 s per call.
+- `verify_prompts.py` rebuilt 4,800 prompts with no problem. `audit_corpus.py`
+  finds no issue and no duplicate history.
+- 3 of 3,840 calls were cut at the output cap: 1 action call, which left an
+  invalid decision, and 2 forecast calls. No reply contains a `<think>` block.
+
+### The hand check
+
+150 messages whose sender then defected, 50 per topology, were read blind:
+- **The labels:** U 146, K 2, DU 2, and none N or M.
+  - Team words that advocate acting together now are read as advocacy of
+    cooperation, so as U.
+  - Only 4 of the 150 say what the sender itself will do. The rest say what
+    "we" must do.
+- **The detector agrees on all 150** (148 promises, 2 not). It errs on less
+  than 10% of the sample, so its promises stand for rules 3 and 5.
+
+### Rule 1 (T1): the forecasts are given and the game is `framing_team`'s
+
+- **Compliance.**
+  - 953 of 959 forecast calls are valid before the messages, and 949 of 959
+    after them: at least 0.98 on every topology.
+  - None is on a 0-1 scale.
+  - 5 were read from a restarted answer.
+- **The game.** The round-1 message prompt tokens equal `framing_team`'s for
+  every agent: 516, 514 and 489.
+- **Cooperation** is reported, not a gate. Run means are in brackets:
+
+| topology | `framing_team`, grid | team-frame probe | promises broken, probe (grid) |
+|---|---|---|---|
+| star | 0.26 (0.11, 0.03, 0.09, 0.06, 1.00) | 0.21 (0.05, 0.06, 0.36, 0.56, 0.03) | 252/318 = 0.79 (0.74) |
+| ring | 0.82 (1.00, 1.00, 1.00, 1.00, 0.12) | 0.30 (0.19, 0.11, 0.11, 1.00, 0.08) | 220/315 = 0.70 (0.17) |
+| clique | 0.25 (0.12, 0.06, 0.05, 0.03, 1.00) | 0.27 (1.00, 0.09, 0.11, 0.06, 0.08) | 232/318 = 0.73 (0.74) |
+
+Rule 1 passes. The ring is 0.52 below its grid cell: 4 of its 5 runs had a
+defection in round 1, against 1 of 5 in the grid.
+
+### Rule 2 (T2): team talk is believed
+
+In round 1, the forecast after a promise is 82.9 under the team frame
+(n = 127) and 91.3 with ordinary talk (n = 124).
+- That is 8.4 points lower, within 10: "team talk is believed as ordinary
+  talk".
+- Per topology, team then ordinary: star 84.3 and 86.7, ring 79.2 and 90.7,
+  clique 84.6 and 94.1.
+
+### Rule 3 (T3): seen through by the rule, believed by a finer match
+
+| cell | promises kept | broken | matched gap | broken believed (after >= 50) | their receivers cooperated |
+|---|---|---|---|---|---|
+| team frame | 531 | 1,492 | 37.1 | 168/1,492 = 0.11 | 131/1,492 = 0.09 |
+| ordinary talk | 1,621 | 224 | 25.3 | 112/224 = 0.50 | 87/224 = 0.39 |
+
+- **By the rule, "lies are seen through"** (37.1).
+- **The gap is an artefact of the three bands.**
+  - The mean forecast before a broken promise is 11.2, and 1,364 of the 1,492
+    fall in the lowest band (0-33).
+  - 1,125 of the 1,492 come in rounds 6-16, after most runs had collapsed.
+- **With finer matching:**
+  - With 10-point bands, the matched gap is 8.0 under the team frame (below
+    10: "believed") and 18.3 with ordinary talk.
+  - In round 1, with no history, it is 1.9 and 0.5.
+  - By round block, under the team frame: 1.9, then 6.4 in rounds 2-5 and 18.6
+    in rounds 6-16.
+- **Unwarned lies are believed.** In 75 broken promises the history gave no
+  warning (forecast before at least 67); 58 of them are believed (0.77).
+- **The words add nothing.** The AUC of the forecast after is 0.92, and of the
+  forecast before 0.91.
+- This sensitivity was found after the reading, and it is not a rule. It
+  applies to the forecast probe's rule 3 as well (see its results).
+
+### Rule 4 (T4): team talk does not repair
+
+- **A defector's new promise moves its forecast by +2.6** (n = 1,395), to 9.0.
+  Ordinary talk gave +31.6, to 44.7. So "team talk does not repair".
+- **Matched on the forecast before:**
+  - +2.6 against +37.1 when it was 0-9;
+  - +5.9 against +34.0 when it was 10-33.
+- **After a lie,** meaning a broken promise the round before: +2.6
+  (n = 1,383), against +26.1 (n = 173).
+- **The defector writes what it wrote before.** Its new message shares 54% of
+  its words with the message of its defection, and 45 are identical. With
+  ordinary talk the share is 29%, and none is identical.
+- **Forgiveness still follows belief.**
+  - A receiver whose forecast after is at least 50 cooperates 20/44 = 0.45.
+  - Below 50 it cooperates 53/1,367 = 0.04.
+  - Under the frame, the forecast after rarely reaches 50.
+
+### Rule 5 (T5): the sender does not mean it
+
+| cell | messages that promise | L | P | honest D |
+|---|---|---|---|---|
+| team frame | 951/959 = 0.99 | 775/783 = 0.99 | 693/702 = 0.99 | 7 |
+| ordinary talk | 828/959 = 0.86 | 221/346 = 0.64 | 108/116 = 0.93 | 103 |
+
+### The verdict
+
+T2 says "believed" and T4 says "does not repair". In the plan's words, the
+frame fails as **empty words**.
+
+### The prediction against the result
+
+- **T1,** it passes: yes. Within 0.20 of the grid cell on every topology: no,
+  the ring is -0.52.
+- **T2,** believed as ordinary talk: yes (82.9 against 91.3).
+- **T3,** lies are believed (below 10): no by the rule (37.1), yes with
+  10-point bands (8.0).
+- **T4,** no repair (below +15): yes (+2.6).
+- **T5,** at least 0.95 promise and L at least 0.90: yes (0.99 and 0.99). P
+  near ordinary talk's: 0.99 against 0.93.
+- **The verdict,** empty words: yes.
+
+### What the runs show
+
+These readings are descriptive, not rules.
+- **A round-1 defection decides a team run.**
+  - All 21 team runs with a round-1 defection end at 0.36 or below: the 12
+    here and the grid's 9.
+  - With ordinary talk, 4 of the 8 such runs recover to 0.78 or above.
+- **Team talk says what "we" should do, not what "I" will do.**
+  - "I will" and its kin appear in 2% of team messages, in the probe and in
+    the grid, and in 89-90% of ordinary ones.
+  - The act is named in 55% and 98%.
+- **So team talk informs no one.** Ordinary messages improve the forecasts'
+  Brier score from 0.128 to 0.090. Team messages leave it at 0.103 and 0.104.
+- **After a first defection, play rarely returns.** Take the runs with a
+  defection before round 16. With ordinary talk, 6 of 9 return to full
+  cooperation in a later round. Under the team frame, 1 of 13 does.
+
+### In words
+
+The team frame in the messages fails as empty words.
+- **Its talk is believed at first,** because it sounds like a promise.
+- **But it carries nothing that could predict the sender.** It says what the
+  team should do, not what the sender will do.
+- **After a betrayal nothing repairs it.** The defector repeats the same words,
+  nobody updates, and the run does not recover.
+
+**Limits.**
+- One model and five runs per topology. The level of a cell rests on how many
+  of its runs collapse.
+- The comparison with ordinary talk crosses two cells run a day apart, on the
+  same server and code.
+- The tokens match the grid cell's. The ring's cooperation does not.
+- The hand check reads a sample. The detector agreed on all of it.
+
+**Files.** These are kept beside the runs, outside the repo, in
+`..\pharos_runs\tok4096\probe_team\analysis\`:
+- the hand labels;
+- the blind sheet and its key, and the key of every defecting message;
+- the forecast pairs;
+- the read-only scripts.
