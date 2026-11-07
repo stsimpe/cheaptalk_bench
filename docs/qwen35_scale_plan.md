@@ -197,3 +197,193 @@ python scale_report.py --roots ..\star_runs\Llama-3.1-8B-Instruct_star ..\star_r
 The references above come from exactly these trees. Do not add
 `star_runs/gemma-2-2b-it_star_commfix` or `cycle_runs/<model>_cycle`, which
 has the old prompt.
+
+## Results, 2026-11-07
+
+Read on 2026-11-07 after all 420 runs. Every reading is exploratory, as fixed
+above.
+
+**Runs and checks.**
+- **When and on what.** The 420 runs ran from 2026-11-06 19:20 to 2026-11-07
+  06:32, on `cfdcf95`. That commit holds this plan and was pushed at 15:53 on
+  11-06.
+  - Three lanes ran in parallel, one per topology, each running sessions A, B
+    and C in turn.
+  - A lane took 11.0-11.2 h, and a session 2.8-4.9 h.
+  - That is 2.6-3.1 s per call, a little faster than the 122B's 3.0-4.9.
+- **The trees.** Each tree has 140 runs of 16 rounds, with no duplicate.
+- **The configs.** Every config field equals the 122B's for the same cell,
+  apart from three:
+  - the model id;
+  - the output folder;
+  - the `forecast_probe` switch. The code added it on 11-04, after the 122B's
+    grid ran, and here it is off.
+- **Cuts.** 70 of 42,240 calls were cut at the output cap:
+  - 37 action calls, which left invalid decisions;
+  - 33 message calls: 31 left an empty message and 2 parsed anyway.
+
+  No reply contains a `<think>` block.
+
+### Rule 1: it passes in substance; its wording did not foresee four flags
+
+| topology | invalid decisions | round-1 tokens, 9B | 122B |
+|---|---|---|---|
+| star | 29/8,960 = 0.003 | 463, 464 | 463, 464 |
+| ring | 22/8,960 = 0.002 | 461, 462 | 461, 462 |
+| clique | 17/8,960 = 0.002 | 436, 437 | 436, 437 |
+
+The two token values are the Stag Hunt and the Prisoner's Dilemma prompts.
+
+- `audit_corpus.py` finds no issue, no duplicate history and no cell above 10%
+  invalid.
+- **`verify_prompts.py` rebuilt 69,120 prompts and flags 4 runs for "horizon
+  leak".** Every hit is in an agent's own message:
+
+| run | round | the words |
+|---|---|---|
+| star, SH `counterfactual`, run 4 | 16 | "we would extend our streak to 16 rounds of maximum mutual payoffs" |
+| star, PD `framing_competitive`, run 4 | 16 | "This is the final round of supremacy" |
+| ring, SH `framing_competitive`, run 2 | 3 | "This is the final round of contention" |
+| clique, PD `framing_team_context[cheap_talk]`, run 1 | 7-15 | "our maximum collective payoff of 16", in 11 messages |
+
+- **What the words are.**
+  - The first counts the rounds so far: every prompt states the current
+    round.
+  - The second and third are competitive rhetoric. One comes in round 3.
+  - The fourth counts points.
+- **The masked copies are clean.** In copies of the four runs, these phrases
+  were masked in the agents' messages: as sent, as composed, and as each
+  receiver saw them. The copies give no problem in 768 rebuilt prompts. No
+  prompt revealed the horizon.
+- **The rule's wording did not foresee this.**
+  - It says "`verify_prompts.py` finds nothing", and read literally it fails.
+  - It should have foreseen it. The 122B's grid had two such runs ("sixteen
+    flawless rounds"), and HANDOFF lists the case as a known false positive.
+  - Rule 1 is read here as passing in substance. A reader who holds to the
+    letter should read what follows as conditional on that.
+- **A wording fix in `scale_report.py`.** It printed "passes, with
+  verify_prompts.py and audit_corpus.py clean", although it runs neither. The
+  line now says that its own two checks pass and that rule 1 also needs the
+  other two. No number changes.
+
+### Rules 2 and 3: the verdict is generation
+
+| marker | 9B | 122B (L) | corpus | midpoint | reading |
+|---|---|---|---|---|---|
+| M1 talk | 0.03 | 0.71 | 0.93-1.00 | 0.82 | like the 122B |
+| M2 no channel | 0.03 | 0.00 | 0.23-0.60 | 0.12 | like the 122B |
+| M3 frame gap | 0.33 | 0.74 | 0.00-0.32 | 0.53 | between |
+
+**Two markers read "like the 122B" and none "like the corpus". The verdict is
+generation.**
+
+Two things the rule does not show:
+- **M3 reads "between" by a margin of 0.007.**
+  - Unrounded, the 9B's M3 is 0.3251. The corpus top, Llama-3.1-8B's, is
+    0.3180.
+  - That is about five decisions of the 1,280 behind the 9B's M3. One flipped
+    run moves M3 by about 0.1.
+  - Had M3 read "like the corpus", the verdict would have been "mixed".
+- **M1 reads "like the 122B" by direction only.** The rule asks on which side
+  of the midpoint the 9B falls. At 0.03, it falls far past the 122B, 0.68 below
+  it.
+
+### Rule 4, descriptive: the 9B's grid
+
+Mean of run means over valid decisions, n = 5 per cell:
+
+| cell | PD star | PD ring | PD clique | SH star | SH ring | SH clique |
+|---|---|---|---|---|---|---|
+| `no_comm` | 0.12 | 0.07 | 0.07 | 0.99 | 0.98 | 0.98 |
+| `baseline_cheap_talk` | 0.02 | 0.05 | 0.01 | 0.81 | 0.98 | 0.97 |
+| `no_sense` | 0.00 | 0.00 | 0.00 | 0.08 | 0.16 | 0.08 |
+| `silence` | 0.00 | 0.01 | 0.00 | 0.19 | 0.31 | 0.13 |
+| `counterfactual` | 0.01 | 0.03 | 0.04 | 0.95 | 0.96 | 0.98 |
+| `framing_business` | 0.03 | 0.11 | 0.07 | 0.99 | 0.98 | 1.00 |
+| `framing_team` | 0.03 | 0.05 | 0.03 | 1.00 | 1.00 | 1.00 |
+| `framing_competitive` | 0.00 | 0.00 | 0.00 | 0.62 | 0.92 | 0.86 |
+| `framing_business_context[no_comm]` | 0.21 | 0.16 | 0.14 | 0.85 | 0.99 | 1.00 |
+| `framing_business_context[cheap_talk]` | 0.08 | 0.19 | 0.15 | 0.97 | 0.96 | 1.00 |
+| `framing_team_context[no_comm]` | 0.84 | 0.54 | 0.91 | 0.99 | 1.00 | 1.00 |
+| `framing_team_context[cheap_talk]` | 0.35 | 0.49 | 0.35 | 0.95 | 1.00 | 1.00 |
+| `framing_competitive_context[no_comm]` | 0.06 | 0.03 | 0.03 | 0.73 | 0.93 | 0.91 |
+| `framing_competitive_context[cheap_talk]` | 0.02 | 0.00 | 0.01 | 0.90 | 0.90 | 0.93 |
+
+- **In the PD, talk never brings the 9B cooperation, and often takes it
+  away.**
+  - Ordinary talk gives 0.02, 0.05 and 0.01, below `no_comm` (0.12, 0.07,
+    0.07).
+  - With the team frame in the system prompt: 0.84, 0.54 and 0.91 without
+    talk, but 0.35, 0.49 and 0.35 with it.
+- **Its talk is honest defection.** The table reads the PD
+  `baseline_cheap_talk` messages with the promise detector, so it is
+  descriptive. The detector agreed with a reading by eye on 10 sampled 9B
+  messages.
+
+| PD `baseline_cheap_talk` | decisions | cooperate | promise | promise, then Defect | no promise, then Defect | round 1: cooperate, promise |
+|---|---|---|---|---|---|---|
+| 9B | 957 | 24 | 177 | 163 | 770 | 1/60, 20/60 |
+| 122B | 958 | 678 | 761 | 123 | 157 | 40/60, 57/60 |
+
+  - It promises in 177 decisions and breaks 163 of those promises (0.92).
+  - Typical messages:
+    - "I will Defect this round. Do not trust my words; I will not
+      Cooperate."
+    - "I will Defect because there is no history to build trust and it is my
+      dominant strategy."
+    - "I will defect this round as there is no binding mechanism to enforce
+      cooperation."
+- **Under the team frame in the messages, it promises and defects.**
+  - It promises in 935 of 959 decisions and breaks 903 of those promises
+    (0.97). The 122B breaks 522 of 949 (0.55).
+  - These are the "empty words" of the team-frame cell
+    (`docs/forecast_team_plan.md`), at their extreme.
+- **Why M3 is low.** The frame works; the 9B's talk erodes it.
+  - With the team frame in the system prompt and talk, the 9B cooperates 0.85
+    in round 1 but 0.40 over the run.
+  - Without talk, the frame holds (0.54-0.91).
+- **The Stag Hunt, outside the rules.** An open channel left empty, or filled
+  with noise, collapses Stag Hunt cooperation in both Qwen3.5 models.
+  - `silence` and `no_sense` give 0.08-0.31 for the 9B and 0.00-0.01 for the
+    122B.
+  - Every corpus model has at least 0.37 in these cells.
+  - With no channel at all, the 9B cooperates 0.98-0.99.
+
+### The prediction against the result
+
+- **Rule 1,** it passes: yes in substance, not to the letter (above).
+- **The verdict,** generation: yes.
+- **M1 at most 0.82:** yes, 0.03. That it would fall 0.68 below the 122B was
+  not predicted.
+- **M2 at most 0.12:** yes, 0.03.
+- **M3 at least 0.53:** no, 0.33, "between". It was the least certain of the
+  three.
+
+### In words
+
+- **By the rule, the 122B's departures from the corpus come with Qwen3.5, not
+  with the total number of parameters.**
+  - They are defection without real talk, and a frame that acts only from the
+    system prompt.
+  - Whether they come from the generation or from the engine cannot be told
+    apart here (see the limits).
+- **But the 9B is not a small 122B.** In the PD, talk brings the 122B 0.71
+  and the 9B nothing. The 9B says that it will defect, and it does. Within
+  the generation, what talk achieves changes with size.
+- **The verdict is thin.** It rests on M3 lying 0.007 above the corpus top.
+
+**Limits.**
+- The limits fixed above: one model on each side, five runs per cell, and the
+  engine.
+- M3's margin is far inside the noise of one flipped run. M1 is read by
+  direction only.
+- The detector is not validated on Qwen3.5, so the talk numbers are
+  descriptive.
+
+**Files.** The read-only scripts and their outputs are kept beside the runs,
+outside the repo, in `..\pharos_runs\tok4096\grid\analysis_9b\`:
+- the census and the timing;
+- the horizon search and the masked check;
+- the exact markers and the talk counts;
+- the outputs of `scale_report.py`, `verify_prompts.py` and
+  `audit_corpus.py`.

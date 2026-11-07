@@ -175,7 +175,8 @@ def main() -> None:
             print(f"   {t:6}: invalid {bad}/{n} = {bad / n if n else float('nan'):.3f}; tokens "
                   f"{sorted(tokens[(args.target, t)])} against {sorted(tokens[(args.large, t)])}"
                   f" -> {'equal' if same else 'NOT EQUAL'}")
-        print("   -> " + ("passes, with verify_prompts.py and audit_corpus.py clean" if ok
+        print("   -> " + ("passes these two checks; rule 1 also needs verify_prompts.py and "
+                          "audit_corpus.py, which this script does not run" if ok
                           else "FAILS: nothing else is read"))
 
     for m in [x for x in (args.large, args.target) if x in models] + [x for x in models if x not in (args.large, args.target)]:
