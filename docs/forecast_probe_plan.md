@@ -347,3 +347,210 @@ changes.
   - A 16-round run has 256 calls, so it takes about 7-8 minutes alone.
   - When the three cells run side by side, earlier lanes ran at 3-5 s per
     call. That makes about 13-21 minutes per run, and 1-2 hours per cell.
+
+## Results, 2026-11-04
+
+Read on 2026-11-04 after all 15 runs, and written up on 2026-11-07. Every
+reading is exploratory, as fixed above. The band sensitivity under rule 3 was
+found on 2026-11-05, while reading the team-frame cell
+(`docs/forecast_team_plan.md`). It is not part of the rules.
+
+**Runs and checks.**
+- The 15 runs ran on 2026-11-04, 00:42-01:37, in three lanes in parallel, on
+  `62bdb1a`. That commit holds the plan (`a5e412d`) with the addendum's parser
+  fix, and it was pushed before the first run.
+- A run took 591-661 s, or 2.3-2.6 s per call.
+- `verify_prompts.py` rebuilt 4,800 prompts with no problem. `audit_corpus.py`
+  finds no issue and no duplicate history.
+- 4 of 3,840 calls were cut at the output cap:
+  - 2 message calls, which left an empty message;
+  - 1 action call, which left an invalid decision;
+  - 1 forecast call.
+
+  No reply contains a `<think>` block.
+
+### The hand check
+
+All 221 messages whose sender then defected were read blind, by the strict
+reading of the plan. The reader saw the text only, shuffled.
+
+| class | messages |
+|---|---|
+| U, unconditional promise | 54 |
+| K, conditional promise ("I will cooperate if you do") | 88 |
+| DU, defect unless | 23 |
+| M, mixed: cooperate with some neighbours, defect against others | 6 |
+| N, not a promise | 50 |
+
+- The strict promises (U + K) are 142. The detector finds 116 promises among
+  the 221: it misses 38 and has 12 false positives.
+- The corrections change counts, so rules 3 and 4 are given both ways.
+
+### Rule 1: the forecasts are given and the game is the baseline's
+
+- **Compliance.**
+  - 958 of 959 forecast calls are valid before the messages, and 955 of 959
+    after them: at least 0.99 on every topology.
+  - None is on a 0-1 scale.
+  - 13 were read from a restarted answer, as the addendum allows (star 9,
+    ring 3, clique 1).
+- **The game.** The round-1 message prompt tokens equal the baseline's for
+  every agent: 464 on the star, 462 on the ring and 437 on the clique.
+- **Cooperation** is reported, not a gate. Run means are in brackets:
+
+| topology | baseline, 10-30 | control, 11-03 | forecast probe | promises broken, probe (baseline) |
+|---|---|---|---|---|
+| star | 0.52 | not run | 0.58 (0.45, 0.33, 0.88, 0.27, 1.00) | 70/251 = 0.28 (0.30) |
+| ring | 0.78 | 0.61 | 0.81 (0.22, 1.00, 1.00, 1.00, 0.81) | 24/272 = 0.09 (0.10) |
+| clique | 0.82 | 0.92 | 0.92 (0.98, 1.00, 0.78, 1.00, 0.81) | 22/305 = 0.07 (0.10) |
+
+Rule 1 passes. Every topology is within 0.20 of the old baseline: +0.06, +0.03
+and +0.10.
+
+### Rule 2: the shift is weak, because the forecasts are already high
+
+- **By the rule, the shift is weak.** It is +8.9 after a promise (n = 1,847)
+  and +0.3 after a message that does not promise (n = 221).
+- **Round 1 has the largest shifts:** +67.6 after a promise (n = 124). By
+  topology: star +64.8, ring +66.2, clique +69.9.
+  - Before the talk, every agent intends to defect (60 of 60). On average it
+    forecasts its neighbours at 24.
+  - After the talk it forecasts 91, and only 4 of 60 still intend to defect.
+    14 of 60 play Defect.
+- **In rounds 2-16 the shift meets a ceiling.**
+  - The forecast before a promise is already 82.6, and the shift is +4.7.
+  - Where the forecast before is below 67, the shift is +33.9 (n = 272).
+- **Per run,** after a promise:
+  - star +21, +13, +10, +12, +5;
+  - ring +36, +2, +4, +4, +10;
+  - clique +6, +5, +18, +3, +9.
+
+### Rule 3: lies are seen through by the rule, through the history
+
+| promises received | n | forecast before | forecast after | shift |
+|---|---|---|---|---|
+| kept | 1,621 | 85.4 | 92.6 | +7.2 |
+| broken (detector) | 224 | 30.2 | 51.7 | +21.5 |
+| broken (hand, strict) | 270 | 28.9 | 49.7 | +20.9 |
+
+- **The matched gap is 25.3, or 27.0 with the hand check: "lies are seen
+  through".**
+- **Beside it:**
+  - The AUC of the forecast after is 0.88, and of the forecast before 0.91.
+    History alone separates kept from broken promises slightly better than
+    history and words together.
+  - **Per topology**, detector then hand: clique 25.6 and 26.9, ring 19.1
+    and 35.3, star 19.0 (detector).
+  - **On the star,** the leaves read only the hub: 13.0 and 9.6. The hub
+    gives 26.7 and 19.7.
+  - **Half of the broken promises are believed.** The receiver forecasts at
+    least 50 in 112 of 224, and it cooperates in 87 (0.39).
+  - **Unwarned lies are mostly believed.** In 49 broken promises the history
+    gave no warning (forecast before at least 67). 33 of them are believed
+    (0.67), and 27 of their receivers cooperate.
+
+**The band sensitivity, found after the reading.** The rule matches on three
+bands of the forecast before. 163 of the 224 broken promises fall in the lowest
+band (0-33), and inside it they sit lower than the kept ones. So the bands leave
+part of the history inside the gap.
+- With 10-point bands the matched gap is 18.3: "partly".
+- In round 1, which has no history, it is 0.5. A promise that will be broken
+  gets 90.9, and one that will be kept 91.4 (AUC 0.57).
+- By round block: 0.5 in round 1, 25.5 in rounds 2-5, 15.4 in rounds 6-16.
+
+So the words carry no warning of a lie. What separates the promises that will
+be broken is the sender's past, which the receivers read well.
+
+### Rule 4: mostly premeditated, but the intention before the talk is a default
+
+| reading | P | star | ring | clique |
+|---|---|---|---|---|
+| detector | 108/116 = 0.93 | 65/70 | 21/24 | 22/22 |
+| **hand (U + K)** | **134/142 = 0.94** | 72/77 | 40/43 | 22/22 |
+| broad (U + K + DU + M) | 162/171 = 0.95 | 91/97 | 45/48 | 26/26 |
+| U alone | 48/54 = 0.89 | 23/27 | 17/19 | 8/8 |
+
+- **P = 0.94 by hand: "mostly premeditated".**
+  - 86 of the 134 premeditated breaks broke a conditional promise, and 48 an
+    unconditional one.
+  - Changes of mind are few: 8 by the detector. In 5 of them, the intention
+    after the messages was already Defect.
+- **L = 221/346 = 0.64.** The noise floor is 84/955 = 0.09.
+- **Categories** (detector): kept 598, lie undone 113, premeditated 108,
+  honest D 103, switch to C 22, change of mind 8, unannounced C 4, unannounced
+  switch to D 2, no valid intention 1.
+- **The intention before the talk is mostly a default.**
+  - It is Defect in all 60 decisions of round 1, then 0.47, 0.33 and 0.21 by
+    round block (2-5, 6-10, 11-16).
+  - After the talk it is 0.07, 0.33, 0.28 and 0.20.
+  - The talk undoes more of these intentions (113 lies undone) than it leaves
+    to be carried out (108 premeditated breaks).
+- **Most planned lies are defensive.** Before the messages, 105 of the 134
+  premeditated liars (hand) expected their neighbours to defect. Only 29
+  expected cooperation and broke it.
+- **Against the private-intention cell's 0.38:** where the intention is asked
+  decides what P says. There it was written in the message call. Here it comes
+  from a separate call, before any message.
+
+### Rule 5: forgiveness follows belief
+
+375 pairs in which the neighbour defected the round before:
+
+| topology | cooperates when its forecast after is >= 50 | when < 50 | forecast after, new promise | no new promise |
+|---|---|---|---|---|
+| star | 35/46 = 0.76 | 25/134 = 0.19 | 33.7 | 25.2 |
+| ring | 15/37 = 0.41 | 11/77 = 0.14 | 51.3 | 18.8 |
+| clique | 35/49 = 0.71 | 4/32 = 0.12 | 61.7 | 45.8 |
+| **all** | **85/132 = 0.64** | **40/243 = 0.16** | **44.7** | **25.0** |
+
+A defector's new promise moves its forecast by +31.6 (n = 245), from 13.2 to
+44.7.
+
+**Calibration** (descriptive). The Brier score falls from 0.128 before the
+messages to 0.090 after them. After the messages the mean forecast is 0.82,
+against 0.81 realised.
+
+### The prediction against the result
+
+- **Rule 1,** the forecasts are given, the tokens are equal and every topology
+  is within 0.20: yes.
+- **Rule 2,** messages persuade: no, the shift is weak (+8.9), because of a
+  ceiling. Round 1 has the largest shifts: yes (+67.6).
+- **Rule 3,** lies are believed as much as kept promises (below 10): no by the
+  rule (25.3; 27.0 by hand). The raw gap before is larger than the matched gap:
+  yes (55.2). The clique has the largest gap: yes by the detector, no by hand
+  (the ring, 35.3).
+- **Rule 4,** mixed: no, mostly premeditated (0.94).
+- **Rule 5,** cooperation at least twice as often, and a new promise raises the
+  forecast: yes (0.64 against 0.16; 25.0 to 44.7).
+
+### In words
+
+- **Talk works by changing what the receivers expect.** Before anyone speaks,
+  every agent plans to defect and expects about 24% cooperation. After the
+  messages it expects about 91% and almost always means to cooperate.
+- **Receivers judge the sender's record, not its words.**
+  - A promise that will be broken reads like one that will be kept: in round
+    1 the two get the same forecast.
+  - Lies are caught where the sender's past warns of them. A lie from a sender
+    with a clean record mostly passes.
+- **A planned lie is mostly a hedge.**
+  - Nearly every broken promise follows an intention to defect.
+  - But that intention is the default before the talk, and the talk overturns
+    it more often than not.
+  - Most liars expected their neighbours to defect.
+- **Forgiveness is belief.** After a betrayal, an agent cooperates again when
+  it expects the defector to. A new promise from the defector moves that
+  expectation by about 30 points.
+
+**Limits.**
+- One model and five runs per topology.
+- A forecast is a belief stated in a separate call. It is not what drives the
+  action.
+- The detector is not validated on Qwen3.5. The hand check covers the messages
+  of the defecting senders; the kept promises are the detector's.
+- Rule 3's reading depends on the width of the bands (above).
+
+**Files.** The hand labels, the blind sheet and its key, the forecast pairs and
+the read-only scripts are kept beside the runs, outside the repo, in
+`..\pharos_runs\tok4096\probe\analysis\`.
