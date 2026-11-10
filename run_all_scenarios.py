@@ -68,6 +68,13 @@ SCENARIOS: list[tuple[str, list[str], str, str, str]] = [
     # of forecast_probe. Their answers reach no prompt, so the game is
     # framing_team's. Cheap talk only.
     ("framing_team_probe", ["cheap_talk"], "framing", "team", "none"),
+    # The same forecasts under the competitive frame in the system prompt, with
+    # talk (docs/qwen38_27b_competitive_plan.md): the cheap_talk arm of
+    # framing_competitive_context, with the two private calls of
+    # forecast_probe. Every call of an agent shares its system prompt, so the
+    # forecasts are asked under the frame too. Their answers reach no prompt,
+    # so the game is the grid cell's. Cheap talk only.
+    ("framing_competitive_context_probe", ["cheap_talk"], "meaningful", "neutral", "competitive"),
 ]
 
 # scenario -> (source action, source message pool). The pool file is
@@ -80,8 +87,8 @@ SOURCE_SCENARIOS: dict[str, tuple[str, str]] = {
 }
 
 # Scenarios that add the private forecasts (docs/forecast_probe_plan.md,
-# docs/forecast_team_plan.md).
-PROBE_SCENARIOS = {"forecast_probe", "framing_team_probe"}
+# docs/forecast_team_plan.md, docs/qwen38_27b_competitive_plan.md).
+PROBE_SCENARIOS = {"forecast_probe", "framing_team_probe", "framing_competitive_context_probe"}
 
 
 def parse_args() -> argparse.Namespace:

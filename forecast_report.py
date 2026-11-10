@@ -47,7 +47,8 @@ from intent_report import category, plain_grid, promise  # noqa: E402
 MIN_VALID, MIN_BROKEN = 0.90, 20
 BANDS = ((0, 34), (34, 67), (67, 101))       # forecast before: 0-33, 34-66, 67-100
 # Each probe cell, and the grid cell whose game it leaves untouched.
-PROBE_CELLS = {"forecast_probe": "baseline", "framing_team_probe": "framing_team"}
+PROBE_CELLS = {"forecast_probe": "baseline", "framing_team_probe": "framing_team",
+               "framing_competitive_context_probe": "framing_competitive_context"}
 
 
 def mean(xs):

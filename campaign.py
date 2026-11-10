@@ -71,6 +71,9 @@ SESSION_SCENARIOS: dict[str, list[str]] = {
     # The same forecasts under the team frame in the messages
     # (docs/forecast_team_plan.md). Run as PROBE is run.
     "PROBE_TEAM": ["framing_team_probe"],
+    # The same forecasts under the competitive frame in the system prompt,
+    # with talk (docs/qwen38_27b_competitive_plan.md). Run as PROBE is run.
+    "PROBE_COMP": ["framing_competitive_context_probe"],
 }
 
 # max_new_tokens per model, per session, copied from the star campaign so a
@@ -132,13 +135,15 @@ def plan(model: str, session: str, topology: str, n_runs: int,
                 f"explicitly, or add the model to MAX_NEW_TOKENS in campaign.py.\n"
                 f"Known models: {sorted(MAX_NEW_TOKENS)}"
             )
-        # "ALL", "C", "SRC", "MANIP", "INTENT" and "PROBE" use the session-A
-        # value: their LLM agents all send ordinary messages (INTENT's add one
-        # short private field, PROBE's two private calls), so they inherit the
-        # cap the star baseline used. Only the session-B framings differ, for
-        # the models whose star framing runs used a smaller cap; PROBE_TEAM's
-        # messages carry the session-B team frame, so it takes that value.
-        key = ("A" if session in ("ALL", "C", "SRC", "MANIP", "INTENT", "PROBE")
+        # "ALL", "C", "SRC", "MANIP", "INTENT", "PROBE" and "PROBE_COMP" use
+        # the session-A value: their LLM agents all send ordinary messages
+        # (INTENT's add one short private field, PROBE's two private calls,
+        # and PROBE_COMP is a session-C cell with PROBE's calls), so they
+        # inherit the cap the star baseline used. Only the session-B framings
+        # differ, for the models whose star framing runs used a smaller cap;
+        # PROBE_TEAM's messages carry the session-B team frame, so it takes
+        # that value.
+        key = ("A" if session in ("ALL", "C", "SRC", "MANIP", "INTENT", "PROBE", "PROBE_COMP")
                else "B" if session == "PROBE_TEAM" else session)
         max_new_tokens = MAX_NEW_TOKENS[model][key]
 
