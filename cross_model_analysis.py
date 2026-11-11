@@ -159,9 +159,15 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
     rows = []
     n_total = 0
     n_skipped = 0
+    n_mixed = 0
     for path, data in discover_records(roots):
         n_total += 1
         cfg = data.get("config", {})
+        if cfg.get("agent_models"):
+            # A mixed population (docs/hetero_star_plan.md) is no model's cell:
+            # its model_id names only the agents agent_models does not list.
+            n_mixed += 1
+            continue
         model_cfg = cfg.get("model", {})
         model_id_raw = model_cfg.get("model_id", "unknown")
         try:
@@ -204,6 +210,8 @@ def build_master_dataframe(roots: list[str]) -> pd.DataFrame:
             **{m: summary.get(m, np.nan) for m in METRIC_COLS},
         })
     print(f"  discovered {n_total} json files, kept {len(rows)} runs ({n_skipped} skipped)")
+    if n_mixed:
+        print(f"  [note] {n_mixed} run(s) of a mixed population left out: they are no model's cell")
     return pd.DataFrame(rows)
 
 

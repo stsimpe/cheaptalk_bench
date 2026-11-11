@@ -17,6 +17,7 @@ import os
 import shutil
 import sys
 import time
+from dataclasses import replace
 from datetime import datetime
 
 from config import ExperimentConfig, ModelConfig, DEFAULT_MODELS
@@ -182,12 +183,60 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--source-agent", type=int, default=0,
                    help="Which agent is the scripted source in the source_* "
                         "scenarios. Default 0, an endpoint of the line.")
+    p.add_argument("--agent-model", action="append", default=None, metavar="AGENT=MODEL_ID",
+                   help="Serve this agent another model than --model-id; repeat "
+                        "for more agents. E.g. --agent-model 0=Qwen/Qwen3.5-122B-A10B "
+                        "puts that model in a star's hub (docs/hetero_star_plan.md). "
+                        "Every other setting is shared, and no prompt names a "
+                        "model. API providers only. Own tree (suffix _a<ids>-<model>).")
     p.add_argument("--zip-after-each", action="store_true", default=True,
                    help="Write a per-scenario zip after each scenario finishes.")
     p.add_argument("--zip-mirror", default=None,
                    help="Extra location to ALSO copy zips to (e.g. /kaggle/working). "
                         "Helps when out-dir-base is somewhere ephemeral.")
     return p.parse_args()
+
+
+def parse_agent_models(specs: list[str] | None, n_agents: int, model_id: str,
+                       provider: str) -> dict[int, str] | None:
+    """--agent-model AGENT=MODEL_ID, repeated, as {agent id: model id}.
+
+    None when the option is not given: every agent uses --model-id, as in
+    every earlier run. Refused: a malformed spec, an agent outside the
+    network, an agent named twice, the model every other agent already uses,
+    and the local provider, which would have to load a second model.
+    """
+    if not specs:
+        return None
+    if provider == "local":
+        raise SystemExit("--agent-model needs an API provider: the local one would load a "
+                         "second model on the same machine.")
+    out: dict[int, str] = {}
+    for spec in specs:
+        agent, sep, mid = spec.partition("=")
+        if not sep or not agent.strip().isdigit() or not mid.strip():
+            raise SystemExit(f"--agent-model {spec!r}: write AGENT=MODEL_ID, e.g. 0=Qwen/Qwen3.5-122B-A10B.")
+        a, mid = int(agent), mid.strip()
+        if not 0 <= a < n_agents:
+            raise SystemExit(f"--agent-model {spec!r}: agent {a} is not one of the {n_agents} agents.")
+        if a in out:
+            raise SystemExit(f"--agent-model names agent {a} twice.")
+        if mid == model_id:
+            raise SystemExit(f"--agent-model {spec!r}: agent {a} would use --model-id anyway.")
+        out[a] = mid
+    if len(out) == n_agents:
+        raise SystemExit("--agent-model names every agent: give one of the models as --model-id.")
+    return out
+
+
+def hetero_tag(agent_models: dict[int, str]) -> str:
+    """The tree and zip suffix of a mixed population: per model, the agents it
+    serves, e.g. {0: 'Qwen/Qwen3.5-122B-A10B'} -> 'a0-Qwen3.5-122B-A10B'."""
+    by_model: dict[str, list[int]] = {}
+    for a in sorted(agent_models):
+        by_model.setdefault(agent_models[a], []).append(a)
+    return "_".join("a" + "".join(str(a) for a in ids) + "-" + mid.split("/")[-1]
+                    for mid, ids in by_model.items())
 
 
 def conditions_tag(conditions: list[str]) -> str:
@@ -266,6 +315,12 @@ def main():
     # share a folder, or a no_comm anchor, with an announced one.
     if args.silent_topology:
         args.out_dir_base = f"{args.out_dir_base}_silent"
+    # A mixed population is no single model's cell: its own tree, named by the
+    # agents served another model, so it never shares a folder with the model
+    # of --model-id.
+    agent_models = parse_agent_models(args.agent_model, args.n_agents, model_id, args.provider)
+    if agent_models:
+        args.out_dir_base = f"{args.out_dir_base}_{hetero_tag(agent_models)}"
 
     if args.request_delay is not None:
         request_delay = args.request_delay
@@ -323,6 +378,9 @@ def main():
     progress_path = os.path.join(zips_dir, "_progress.json")
 
     print(f"=== Model: {args.provider}:{model_id} ===")
+    if agent_models:
+        print(f"=== Agent models: {', '.join(f'agent {a}: {m}' for a, m in sorted(agent_models.items()))}"
+              f"; every other agent: {model_id} ===")
     print(f"=== Scenarios: {[s[0] for s in selected]} ===")
     print(f"=== Per scenario: {n_runs} runs x {n_rounds} rounds, games={args.games} ===")
     print(f"=== Output: {args.out_dir_base} ===")
@@ -340,18 +398,34 @@ def main():
     print("=== Loading model... ===")
     t0 = time.time()
     client = make_client(model_cfg)
+    # A mixed population: one client per other model, with the same settings
+    # but the model id, and every client records the model that answered.
+    agent_clients: dict[int, object] = {}
+    if agent_models:
+        client.record_served_model = True
+        by_model: dict[str, object] = {}
+        for a, mid in sorted(agent_models.items()):
+            if mid not in by_model:
+                by_model[mid] = make_client(replace(model_cfg, model_id=mid))
+                by_model[mid].record_served_model = True
+            agent_clients[a] = by_model[mid]
     print(f"=== Model loaded in {time.time()-t0:.1f}s ===\n")
 
     if not args.no_probe:
         try:
             preflight_probe(client, model_id, args.provider)
+            for mid in sorted(set((agent_models or {}).values())):
+                preflight_probe(agent_clients[min(a for a, m in agent_models.items() if m == mid)],
+                                mid, args.provider)
         except TokenBudgetExceeded as e:
             print(f"\n[FAIL-FAST] {e}\n")
             sys.exit(2)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     progress = {
-        "started_at": ts, "model": model_id, "scenarios_planned": [s[0] for s in selected],
+        "started_at": ts, "model": model_id,
+        **({"agent_models": {str(a): m for a, m in agent_models.items()}} if agent_models else {}),
+        "scenarios_planned": [s[0] for s in selected],
         "scenarios_done": [], "current_scenario": None, "session_tokens": 0,
     }
     write_progress(progress_path, progress)
@@ -389,6 +463,7 @@ def main():
                     topology_aware_comm_prompt=args.topology_aware_comm_prompt,
                     silent_topology=args.silent_topology,
                     forecast_probe=sc_label in PROBE_SCENARIOS,
+                    agent_models=agent_models,
                     scenario=sc_label,
                     action_retries=args.action_retries,
                     out_dir=sc_out_dir,
@@ -402,7 +477,8 @@ def main():
                       f"{n_runs}x{n_rounds} ---")
                 for run_id in range(args.first_run, args.first_run + n_runs):
                     try:
-                        record = engine.run_one(run_id=run_id, client=client)
+                        record = engine.run_one(run_id=run_id, client=client,
+                                                agent_clients=agent_clients)
                     except TokenBudgetExceeded as e:
                         print(f"\n[STOP] {e}")
                         # Try to save what we have so far for this scenario.

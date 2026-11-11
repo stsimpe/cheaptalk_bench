@@ -70,6 +70,10 @@ class OpenAICompatibleClient(LLMClient):
     # name of the output cap: OpenAI's newer field, or vLLM's max_tokens.
     EXTRA_BODY: dict | None = None
     TOKENS_PARAM: str = "max_completion_tokens"
+    # A mixed population (ExperimentConfig.agent_models) sets this on every
+    # client of the run, so each call also records the model the server says
+    # answered it ("model" in last_meta). Off, the record is as before.
+    record_served_model: bool = False
 
     def __init__(self, cfg: ModelConfig):
         self.cfg = cfg
@@ -105,6 +109,8 @@ class OpenAICompatibleClient(LLMClient):
                     "completion_tokens": getattr(usage, "completion_tokens", None) if usage else None,
                     "finish_reason": resp.choices[0].finish_reason,
                 }
+                if self.record_served_model:
+                    self.last_meta["model"] = getattr(resp, "model", None)
                 if self.cfg.request_delay_s > 0:
                     time.sleep(self.cfg.request_delay_s)
                 return resp.choices[0].message.content or ""

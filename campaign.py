@@ -125,7 +125,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
          source_pools: str | None = None,
          silent_topology: bool = False,
          first_run: int = 1,
-         provider: str = "local") -> dict:
+         provider: str = "local",
+         agent_models: dict[int, str] | None = None) -> dict:
     if session not in SESSION_SCENARIOS:
         raise SystemExit(f"Unknown session {session!r}; choose from {sorted(SESSION_SCENARIOS)}")
     if max_new_tokens is None:
@@ -184,6 +185,9 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         result_dir = f"{result_dir}_{action_labels}"
     if silent_topology:
         result_dir = f"{result_dir}_silent"
+    if agent_models:
+        from run_all_scenarios import hetero_tag
+        result_dir = f"{result_dir}_{hetero_tag(agent_models)}"
     if expected_runs(scenarios, n_runs, len(games), conditions) == 0:
         raise SystemExit(f"{scenarios} have no {conditions} arm -- nothing would run.")
     zip_name = f"{short}_{topology}_session{session}"
@@ -205,6 +209,8 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         zip_name += f"_{action_labels}"
     if silent_topology:
         zip_name += "_silent"
+    if agent_models:
+        zip_name += f"_{hetero_tag(agent_models)}"
     # A block of runs (one session of a cell split over several) is named by
     # its runs, so the downloads of two sessions never share a name. The
     # result tree is the same: the run files are numbered and do not collide.
@@ -224,6 +230,7 @@ def plan(model: str, session: str, topology: str, n_runs: int,
         "silent_topology": silent_topology,
         "first_run": first_run,
         "provider": provider,
+        "agent_models": agent_models,
         "max_new_tokens": max_new_tokens,
         "out_dir_base": out_dir_base, "result_dir": result_dir,
         "expected_runs": expected_runs(scenarios, n_runs, len(games), conditions),
@@ -267,6 +274,8 @@ def build_cmd(p: dict, zip_mirror: str | None) -> list[str]:
         cmd += ["--silent-topology"]
     if p.get("first_run", 1) != 1:
         cmd += ["--first-run", str(p["first_run"])]
+    for a, mid in sorted((p.get("agent_models") or {}).items()):
+        cmd += ["--agent-model", f"{a}={mid}"]
     cmd += ["--scenarios", *p["scenarios"]]
     return cmd
 
@@ -403,9 +412,15 @@ def main() -> int:
     ap.add_argument("--first-run", type=int, default=1,
                     help="Number the runs from here: with --n-runs 2, --first-run 4 "
                          "runs 4 and 5 of every cell (a cell split over sessions).")
+    ap.add_argument("--agent-model", action="append", default=None, metavar="AGENT=MODEL_ID",
+                    help="Serve this agent another model than --model; repeat for more "
+                         "agents (docs/hetero_star_plan.md). API providers only. "
+                         "Own tree and zip (suffix _a<ids>-<model>).")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print the plan and the command, run nothing.")
     args = ap.parse_args()
+    from run_all_scenarios import parse_agent_models
+    agent_models = parse_agent_models(args.agent_model, args.n_agents, args.model, args.provider)
 
     if (args.topology != "star" and not args.topology_aware_comm_prompt
             and not args.silent_topology):
@@ -422,7 +437,7 @@ def main() -> int:
              hide_own=args.hide_own_message, action_labels=args.action_labels,
              n_agents=args.n_agents, source_pools=args.source_pools,
              silent_topology=args.silent_topology, first_run=args.first_run,
-             provider=args.provider)
+             provider=args.provider, agent_models=agent_models)
     cmd = build_cmd(p, args.zip_mirror)
 
     print("=" * 70)
@@ -454,6 +469,9 @@ def main() -> int:
     if p.get("silent_topology"):
         print(f"NETWORK      : not described to the agents, both arms "
               f"-> {p['result_dir']}")
+    if p.get("agent_models"):
+        print(f"MODELS       : " + ", ".join(f"agent {a} -> {m}" for a, m in sorted(p["agent_models"].items()))
+              + f"; every other agent -> {p['model']} -> {p['result_dir']}")
     if p.get("action_labels", "standard") != "standard":
         names = " / ".join(ACTION_LABEL_SCHEMES[p["action_labels"]])
         print(f"LABELS       : {p['action_labels']} -- the agents read {names} for the "

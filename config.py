@@ -57,7 +57,8 @@ DEFAULT_MODELS: dict[str, str] = {
 
 @dataclass
 class ModelConfig:
-    """Which model, with what sampling params. All 4 agents share this in v1."""
+    """Which model, with what sampling params. All agents share this, unless
+    ExperimentConfig.agent_models serves some of them another model."""
     provider: Provider = "groq"
     model_id: str = "llama-3.1-8b-instant"
     temperature: float = 0.7
@@ -128,6 +129,13 @@ class ExperimentConfig:
     # prompt of the game, so play is the baseline's. False is every earlier
     # run.
     forecast_probe: bool = False
+    # A mixed population (docs/hetero_star_plan.md): agent id -> model id, for
+    # the agents served another model than `model`. Everything else in
+    # `model` (provider, temperature, max_tokens, retries) is shared, so only
+    # the model differs, and no prompt says which model a neighbour is. Every
+    # call of such a run records the model the server says answered it. None
+    # (the default) is every earlier run: all agents use `model`.
+    agent_models: dict[int, str] | None = None
     # Scripted source (the contagion experiment, docs/contagion_plan.md). The
     # agent `source_agent` makes no model call: it plays `source_action`
     # ("cooperate" or "defect") every round and sends a message drawn from the

@@ -69,8 +69,20 @@ class GameEngine:
         other = next(a for a in self.game.action_labels if a != coop)
         return {"cooperate": coop, "defect": other}[self.cfg.source_action]
 
-    def build_agents(self, client, run_id: int = 0) -> list[Agent]:
+    def build_agents(self, client, run_id: int = 0, agent_clients: dict | None = None) -> list[Agent]:
+        """`agent_clients` maps the agents of a mixed population
+        (cfg.agent_models) to the client of their model; every other agent
+        uses `client`. The runner always passes it, and then it must name
+        exactly the agents of cfg.agent_models. None, the default, is for the
+        tools that only rebuild prompts (verify_prompts, replay), which no
+        model answers."""
         agents: list[Agent] = []
+        if agent_clients is not None:
+            expected = {int(i) for i in (getattr(self.cfg, "agent_models", None) or {})}
+            if set(agent_clients) != expected:
+                raise ValueError(f"agent clients {sorted(agent_clients)} do not match "
+                                 f"cfg.agent_models {sorted(expected)}")
+        agent_clients = agent_clients or {}
         source = getattr(self.cfg, "source_agent", None)
         silent = getattr(self.cfg, "silent_topology", False)
         for i in range(self.topology.n_agents):
@@ -96,7 +108,7 @@ class GameEngine:
                     total_agents=self.topology.n_agents,
                     game=self.game,
                     condition=self.condition,
-                    client=client,
+                    client=agent_clients.get(i, client),
                     message_max_words=self.cfg.message_max_words,
                     memory_window=self.cfg.memory_window,
                     message_policy=self._policy_for(i),
@@ -261,8 +273,8 @@ class GameEngine:
         record["llm_calls"] = {a.agent_id: a.drain_calls() for a in agents}
         return record
 
-    def run_one(self, run_id: int, client) -> dict:
-        agents = self.build_agents(client, run_id=run_id)
+    def run_one(self, run_id: int, client, agent_clients: dict | None = None) -> dict:
+        agents = self.build_agents(client, run_id=run_id, agent_clients=agent_clients)
         history: list[dict] = []
         for r in range(1, self.cfg.n_rounds + 1):
             if self.condition == "no_comm":

@@ -66,10 +66,12 @@ def category(intends_coop: bool | None, promised: bool, played_coop: bool) -> st
 
 def plain_grid(cfg: dict) -> bool:
     """The grid as the baseline ran it: no filter, nothing hidden, everyone
-    under the scenario's policy, standard names, the network described."""
+    under the scenario's policy, standard names, the network described, and
+    one model for every agent (a mixed population is no model's cell)."""
     return (cfg.get("message_filter", "none") == "none" and not cfg.get("hide_own_message")
             and cfg.get("policy_agents") is None and cfg.get("action_labels", "standard") == "standard"
-            and not cfg.get("silent_topology") and cfg.get("source_agent") is None)
+            and not cfg.get("silent_topology") and cfg.get("source_agent") is None
+            and not cfg.get("agent_models"))
 
 
 def load_rows(roots: list[str]) -> list[dict]:
