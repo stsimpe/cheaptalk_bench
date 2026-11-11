@@ -26,8 +26,9 @@ when more than 10 of the random 100 are promises by hand.
 
 --hand reads `<name>_labels.txt` beside `<name>_key.csv` (classes U, K, DU, M,
 N for promises and promises2, strict = U + K; I, G, ? for invert). The hand's
-reading replaces the detector's for every message read, and the calls labelled
-I leave the rules that use forecasts (variant B).
+reading replaces the detector's for every message read, the hub's included
+where rule 5 splits the leaves' forecasts by its promises, and the calls
+labelled I leave the rules that use forecasts (variant B).
 """
 from __future__ import annotations
 
@@ -111,7 +112,8 @@ def read_labels(folder, name):
 def rows_of(runs, hand, inverted):
     """One row per valid decision: role, action, promise (hand where read),
     intentions, belief, payoff per neighbour, the neighbours' actions that
-    round and the next, and the forecasts of agent 0 by each leaf."""
+    round and the next, the forecasts of agent 0 by each leaf, and whether
+    agent 0's message that round is a promise (hand where read)."""
     out = []
     for d in runs:
         h = d["history"]
@@ -128,6 +130,7 @@ def rows_of(runs, hand, inverted):
                 vals = [v for v in (af.get("probabilities") or {}).values() if v is not None]
                 msg = r["messages"].get(a, "")
                 hc = hand.get(k, (None,))[0]
+                hc0 = hand.get(key(d, r["round"], "0"), (None,))[0]
                 out.append(dict(
                     run=d["_path"], round=r["round"], agent=int(a), role=role(a), coop=act == COOP,
                     promise=(hc in STRICT) if hc else promise(msg, "pd"), hand=hc, message=msg,
@@ -146,6 +149,7 @@ def rows_of(runs, hand, inverted):
                     forecast_of_hub=(None if a == "0" else
                                      ((b.get("probabilities") or {}).get("0"), (af.get("probabilities") or {}).get("0"))),
                     hub_message=r["messages"].get("0", ""),
+                    hub_promise=(hc0 in STRICT) if hc0 else promise(r["messages"].get("0", ""), "pd"),
                     hub_action=r["actions"].get("0"),
                 ))
             for a in r["actions"]:
@@ -329,17 +333,16 @@ def report(a):
             print(f"   {s:11}: the hub promised in {len(prom)} of {sum(x['role'] == 'hub' for x in R[s])} decisions, "
                   f"broke {len(br)}; P {share(sum(x['int_before'] == DEF for x in ok), len(ok))}; "
                   + "; ".join(f"{k} {c[k]}" for k in KINDS) + f" -> {v5}")
-        # the leaves' forecasts of the hub
+        # the leaves' forecasts of the hub, split by the hub's promise (the hand's reading where read)
         L = [x for x in R["mixed"] if x["role"] == "leaves" and keep(x) and x["forecast_of_hub"]]
-        brk = [x for x in L if promise(x["hub_message"], "pd") and x["hub_action"] == DEF and x["forecast_of_hub"][1] is not None]
-        kept = [x for x in L if promise(x["hub_message"], "pd") and x["hub_action"] == COOP and x["forecast_of_hub"][1] is not None]
+        brk = [x for x in L if x["hub_promise"] and x["hub_action"] == DEF and x["forecast_of_hub"][1] is not None]
+        kept = [x for x in L if x["hub_promise"] and x["hub_action"] == COOP and x["forecast_of_hub"][1] is not None]
         print(f"   the leaves' forecast of the hub after its promise: kept {len(kept)}, mean "
               f"{f0(mean([x['forecast_of_hub'][1] for x in kept]))}; broken {len(brk)}, mean "
               f"{f0(mean([x['forecast_of_hub'][1] for x in brk]))}; broken believed (50 or more) "
               f"{share(sum(x['forecast_of_hub'][1] >= 50 for x in brk), len(brk))}; AUC "
               f"{f2(auc([x['forecast_of_hub'][1] for x in kept], [x['forecast_of_hub'][1] for x in brk]))}")
-        r1p = [x for x in L if x["round"] == 1 and promise(x["hub_message"], "pd")
-               and None not in x["forecast_of_hub"]]
+        r1p = [x for x in L if x["round"] == 1 and x["hub_promise"] and None not in x["forecast_of_hub"]]
         print(f"   round 1, a leaf's forecast of the hub after the hub's promise: shift "
               f"{f1(mean([x['forecast_of_hub'][1] - x['forecast_of_hub'][0] for x in r1p]))} (n={len(r1p)}), "
               f"from {f0(mean([x['forecast_of_hub'][0] for x in r1p]))} to {f0(mean([x['forecast_of_hub'][1] for x in r1p]))}")
