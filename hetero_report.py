@@ -1,18 +1,31 @@
-"""The reading of docs/hetero_star_plan.md: a star whose hub (agent 0) is served
-another model than its leaves (agents 1-3; config `agent_models`), against a
-same-day control (the hub's model alone on the star) and the two models' own
-earlier stars. Prisoner's Dilemma, cheap talk; the forecast cell where its
-runs have one. Read-only on the runs.
+"""The reading of docs/hetero_star_plan.md and docs/hetero_star_27b_9b_plan.md:
+a star whose hub (agent 0) is served another model than its leaves (agents 1-3;
+config `agent_models`), against a same-day control (one of the two models alone
+on the star) and the two models' own earlier stars. Prisoner's Dilemma, cheap
+talk; the forecast cell where its runs have one. Read-only on the runs.
 
     python hetero_report.py --mixed <root> [...] --control <root> [...]
         --hub-home <root> [...] --leaves-home <root> [...] [--hand <dir>]
+        [--lies hub|leaves]
     python hetero_report.py --mixed ... --control ... --dump <dir>
     python hetero_report.py --mixed ... --control ... --dump-rest <dir>
 
 Each root is searched for *_cheaptalk_run*.json (the zips folders excluded).
 --mixed keeps the runs with agent_models; every other option keeps the runs
-without it. The hub's and the leaves' models are read from the mixed runs; the
-control and --hub-home keep the hub's model's stars, --leaves-home the leaves'.
+without it. The hub's and the leaves' models are read from the mixed runs;
+--hub-home keeps the hub's model's stars, --leaves-home the leaves', and the
+control the stars of either model (all of one).
+
+The control's model sets what rules 2 and 3 read against:
+- the hub's model alone (docs/hetero_star_plan.md): rule 2 reads the mixed hub
+  against the control's hub, and rule 3 the mixed leaves against the leaves'
+  model at home, as a drop;
+- the leaves' model alone (docs/hetero_star_27b_9b_plan.md): rule 2 reads the
+  mixed hub against the hub's model at home, and rule 3 the mixed leaves
+  against the control's leaves, either way.
+--lies picks whose broken promises rule 5 reads: the hub's (the default), with
+the leaves' forecasts of the hub, or the leaves', with the hub's forecasts of
+each leaf.
 
 --dump writes the plan's two blind sheets (id and text only, shuffled) and
 their keys: `promises` (every message of a defecting sender in the mixed and
@@ -26,9 +39,9 @@ when more than 10 of the random 100 are promises by hand.
 
 --hand reads `<name>_labels.txt` beside `<name>_key.csv` (classes U, K, DU, M,
 N for promises and promises2, strict = U + K; I, G, ? for invert). The hand's
-reading replaces the detector's for every message read, the hub's included
-where rule 5 splits the leaves' forecasts by its promises, and the calls
-labelled I leave the rules that use forecasts (variant B).
+reading replaces the detector's for every message read, the sender's included
+where rule 5 splits forecasts by its promises, and the calls labelled I leave
+the rules that use forecasts (variant B).
 """
 from __future__ import annotations
 
@@ -112,8 +125,9 @@ def read_labels(folder, name):
 def rows_of(runs, hand, inverted):
     """One row per valid decision: role, action, promise (hand where read),
     intentions, belief, payoff per neighbour, the neighbours' actions that
-    round and the next, the forecasts of agent 0 by each leaf, and whether
-    agent 0's message that round is a promise (hand where read)."""
+    round and the next, the forecasts of agent 0 by each leaf, whether agent
+    0's message that round is a promise (hand where read), and the agent's own
+    forecasts of each neighbour, before and after the messages."""
     out = []
     for d in runs:
         h = d["history"]
@@ -151,6 +165,7 @@ def rows_of(runs, hand, inverted):
                     hub_message=r["messages"].get("0", ""),
                     hub_promise=(hc0 in STRICT) if hc0 else promise(r["messages"].get("0", ""), "pd"),
                     hub_action=r["actions"].get("0"),
+                    fc_nb=((b.get("probabilities") or {}), (af.get("probabilities") or {})),
                 ))
             for a in r["actions"]:
                 if any(r["actions"].get(j) == DEF for j in r["messages_seen_by"].get(a, {})):
@@ -167,6 +182,48 @@ def kind(x):
 KINDS = ("planned exploitation", "planned defence", "decided after, expecting C", "decided after, expecting D")
 
 
+def lies_kinds(R, ro, keep, sets_):
+    """Rule 5's first lines: the role's broken promises in each set, P and the four kinds."""
+    who = "the hub" if ro == "hub" else "the leaves"
+    for s in sets_:
+        br = [x for x in R[s] if x["role"] == ro and keep(x) and x["promise"] and not x["coop"]]
+        ok = [x for x in br if x["int_before"] in (COOP, DEF) and x["belief"] is not None]
+        c = Counter(kind(x) for x in ok)
+        pe = c[KINDS[0]] / len(ok) if ok else float("nan")
+        v5 = ("too few to read (fewer than 10)" if len(ok) < 10 else "mostly planned exploitation" if pe >= 0.50
+              else "rarely planned exploitation" if pe < 0.25 else "partly")
+        prom = [x for x in R[s] if x["role"] == ro and x["promise"]]
+        print(f"   {s:11}: {who} promised in {len(prom)} of {sum(x['role'] == ro for x in R[s])} decisions, "
+              f"broke {len(br)}; P {share(sum(x['int_before'] == DEF for x in ok), len(ok))}; "
+              + "; ".join(f"{k} {c[k]}" for k in KINDS) + f" -> {v5}")
+
+
+def leaves_lies(R, keep, var):
+    """Rule 5 of docs/hetero_star_27b_9b_plan.md: the leaves' lies, and the
+    hub's forecast of each leaf after that leaf's promise (the hand's reading
+    where read), kept or broken."""
+    print(f"\n######## Rule 5: the leaves' lies, and whether the hub believes them [{var}]")
+    lies_kinds(R, "leaves", keep, ("mixed", "control", "leaves home"))
+    leaf = {(x["run"], x["round"], x["agent"]): x for x in R["mixed"] if x["role"] == "leaves"}
+    P = []                      # (the hub's forecast of the leaf before, after; the leaf kept its promise; round)
+    for x in R["mixed"]:
+        if x["role"] != "hub" or not keep(x):
+            continue
+        before, after = x["fc_nb"]
+        for j, v in after.items():
+            y = leaf.get((x["run"], x["round"], int(j)))
+            if y is not None and y["promise"] and v is not None:
+                P.append((before.get(j), v, y["coop"], x["round"]))
+    kept, brk = [p[1] for p in P if p[2]], [p[1] for p in P if not p[2]]
+    print(f"   the hub's forecast of a leaf after that leaf's promise: kept {len(kept)}, mean {f0(mean(kept))}; broken "
+          f"{len(brk)}, mean {f0(mean(brk))}; broken believed (50 or more) {share(sum(v >= 50 for v in brk), len(brk))}; "
+          f"AUC {f2(auc(kept, brk))}")
+    r1p = [p for p in P if p[3] == 1 and p[0] is not None]
+    print(f"   round 1, the hub's forecast of a leaf after that leaf's promise: shift "
+          f"{f1(mean([p[1] - p[0] for p in r1p]))} (n={len(r1p)}), from {f0(mean([p[0] for p in r1p]))} to "
+          f"{f0(mean([p[1] for p in r1p]))}")
+
+
 # ------------------------------------------------------------------ the report
 def report(a):
     mixed = load(a.mixed, True)
@@ -178,8 +235,12 @@ def report(a):
     am = json.loads(am)
     assert set(am) == {"0"}, f"the plan reads a star with another model in the hub only, not {am}"
     hub_model = am["0"]
+    control = [d for d in load(a.control, False) if d["config"]["model"]["model_id"] in (hub_model, leaf_model)]
+    cm = {d["config"]["model"]["model_id"] for d in control}
+    assert len(cm) == 1, f"the control must hold the stars of one of the two models, not {sorted(cm) or 'none'}"
+    control_role = "hub" if cm == {hub_model} else "leaves"
     sets = {"mixed": mixed,
-            "control": [d for d in load(a.control, False) if d["config"]["model"]["model_id"] == hub_model],
+            "control": control,
             "hub home": [d for d in load(a.hub_home or [], False) if d["config"]["model"]["model_id"] == hub_model],
             "leaves home": [d for d in load(a.leaves_home or [], False)
                             if d["config"]["model"]["model_id"] == leaf_model]}
@@ -197,6 +258,9 @@ def report(a):
     for s, v in sets.items():
         sc = Counter(d["config"]["scenario"] for d in v)
         print(f"   {s:11}: {len(v)} runs {dict(sc)}")
+    if control_role == "leaves":
+        print(f"   the control is the leaves' model alone ({ls}): rule 2 reads the hub against its model at home, "
+              f"rule 3 the leaves against the control")
     if a.hand:
         print(f"hand readings: {len(hand)} messages ("
               + ", ".join(f"{c} {n}" for c, n in sorted(Counter(c for c, _ in hand.values()).items())) + ")")
@@ -247,9 +311,10 @@ def report(a):
                         tok[(s, role(ag))].add(c["prompt_tokens"])
     # Role by role: the mixed hub against the hub's model in its own star's hub,
     # the mixed leaves against the leaves' model in its own star's leaves, and
-    # the control against the hub's model at home, both roles.
+    # the control against its own model at home, both roles.
+    ref_c = "hub home" if control_role == "hub" else "leaves home"
     pairs_ = (("mixed", "hub", "hub home"), ("mixed", "leaves", "leaves home"),
-              ("control", "hub", "hub home"), ("control", "leaves", "hub home"))
+              ("control", "hub", ref_c), ("control", "leaves", ref_c))
     tok_ok = True
     for s, ro, ref in pairs_:
         got, want = tok[(s, ro)], tok[(ref, ro)]
@@ -287,19 +352,36 @@ def report(a):
         return c / n if n else float("nan")
 
     print("\n######## Rule 2: does the neighbourhood change the hub?")
-    d2 = rate("mixed", "hub") - rate("control", "hub")
+    d2 = rate("mixed", "hub") - rate("control" if control_role == "hub" else "hub home", "hub")
     v2 = ("the leaves raise the hub's cooperation" if d2 >= 0.20 else "the leaves lower the hub's cooperation"
           if d2 <= -0.20 else "the hub plays as in its own star" if abs(d2) < 0.10 else "partly")
-    print(f"   hub: mixed {f2(rate('mixed', 'hub'))}, control {f2(rate('control', 'hub'))}: {f1(d2 * 100)} points -> {v2}")
-    print(f"   beside: the hub's model at home, hub {f2(rate('hub home', 'hub'))}, leaves {f2(rate('hub home', 'leaves'))}; "
-          f"the control's leaves {f2(rate('control', 'leaves'))}")
+    if control_role == "hub":
+        print(f"   hub: mixed {f2(rate('mixed', 'hub'))}, control {f2(rate('control', 'hub'))}: {f1(d2 * 100)} points "
+              f"-> {v2}")
+        print(f"   beside: the hub's model at home, hub {f2(rate('hub home', 'hub'))}, leaves "
+              f"{f2(rate('hub home', 'leaves'))}; the control's leaves {f2(rate('control', 'leaves'))}")
+    else:
+        print(f"   hub: mixed {f2(rate('mixed', 'hub'))}, at home {f2(rate('hub home', 'hub'))}: {f1(d2 * 100)} points "
+              f"-> {v2}")
+        print(f"   beside: the hub's model at home by run " + ", ".join(f2(v) for v in run_means(R["hub home"], "hub"))
+              + f"; the control ({ls} alone): hub {f2(rate('control', 'hub'))}, leaves {f2(rate('control', 'leaves'))}")
 
     print("\n######## Rule 3: does the hub change the leaves?")
-    d3 = rate("leaves home", "leaves") - rate("mixed", "leaves")
-    v3 = ("the hub pulls the leaves down" if d3 >= 0.20 else "the leaves play as in their own star"
-          if d3 < 0.10 else "partly")
-    print(f"   leaves: mixed {f2(rate('mixed', 'leaves'))}, at home {f2(rate('leaves home', 'leaves'))}: drop "
-          f"{f1(d3 * 100)} points -> {v3}")
+    if control_role == "hub":
+        d3 = rate("leaves home", "leaves") - rate("mixed", "leaves")
+        v3 = ("the hub pulls the leaves down" if d3 >= 0.20 else "the leaves play as in their own star"
+              if d3 < 0.10 else "partly")
+        print(f"   leaves: mixed {f2(rate('mixed', 'leaves'))}, at home {f2(rate('leaves home', 'leaves'))}: drop "
+              f"{f1(d3 * 100)} points -> {v3}")
+    else:
+        d3 = rate("mixed", "leaves") - rate("control", "leaves")
+        v3 = ("the hub raises the leaves' cooperation" if d3 >= 0.20 else "the hub lowers the leaves' cooperation"
+              if d3 <= -0.20 else "the leaves play as in their own star" if abs(d3) < 0.10 else "partly")
+        print(f"   leaves: mixed {f2(rate('mixed', 'leaves'))}, control {f2(rate('control', 'leaves'))}: "
+              f"{f1(d3 * 100)} points -> {v3}")
+        print(f"   beside: the leaves' model at home, leaves {f2(rate('leaves home', 'leaves'))}, hub "
+              f"{f2(rate('leaves home', 'hub'))}; the control's leaves against them: "
+              f"{f1((rate('control', 'leaves') - rate('leaves home', 'leaves')) * 100)} points")
 
     print("\n######## Rule 4: who exploits whom (hub-leaf edges; payoff per neighbour)")
     for s in sets:
@@ -321,31 +403,24 @@ def report(a):
 
     for var, keep in (("A all calls", lambda x: True),
                       ("B without the inverted calls found", lambda x: not x["inv_before"] and not x["inv_after"])):
-        print(f"\n######## Rule 5: the hub's lies, and whether the leaves believe them [{var}]")
-        for s in ("mixed", "control", "hub home"):
-            br = [x for x in R[s] if x["role"] == "hub" and keep(x) and x["promise"] and not x["coop"]]
-            ok = [x for x in br if x["int_before"] in (COOP, DEF) and x["belief"] is not None]
-            c = Counter(kind(x) for x in ok)
-            pe = c[KINDS[0]] / len(ok) if ok else float("nan")
-            v5 = ("too few to read (fewer than 10)" if len(ok) < 10 else "mostly planned exploitation" if pe >= 0.50
-                  else "rarely planned exploitation" if pe < 0.25 else "partly")
-            prom = [x for x in R[s] if x["role"] == "hub" and x["promise"]]
-            print(f"   {s:11}: the hub promised in {len(prom)} of {sum(x['role'] == 'hub' for x in R[s])} decisions, "
-                  f"broke {len(br)}; P {share(sum(x['int_before'] == DEF for x in ok), len(ok))}; "
-                  + "; ".join(f"{k} {c[k]}" for k in KINDS) + f" -> {v5}")
-        # the leaves' forecasts of the hub, split by the hub's promise (the hand's reading where read)
-        L = [x for x in R["mixed"] if x["role"] == "leaves" and keep(x) and x["forecast_of_hub"]]
-        brk = [x for x in L if x["hub_promise"] and x["hub_action"] == DEF and x["forecast_of_hub"][1] is not None]
-        kept = [x for x in L if x["hub_promise"] and x["hub_action"] == COOP and x["forecast_of_hub"][1] is not None]
-        print(f"   the leaves' forecast of the hub after its promise: kept {len(kept)}, mean "
-              f"{f0(mean([x['forecast_of_hub'][1] for x in kept]))}; broken {len(brk)}, mean "
-              f"{f0(mean([x['forecast_of_hub'][1] for x in brk]))}; broken believed (50 or more) "
-              f"{share(sum(x['forecast_of_hub'][1] >= 50 for x in brk), len(brk))}; AUC "
-              f"{f2(auc([x['forecast_of_hub'][1] for x in kept], [x['forecast_of_hub'][1] for x in brk]))}")
-        r1p = [x for x in L if x["round"] == 1 and x["hub_promise"] and None not in x["forecast_of_hub"]]
-        print(f"   round 1, a leaf's forecast of the hub after the hub's promise: shift "
-              f"{f1(mean([x['forecast_of_hub'][1] - x['forecast_of_hub'][0] for x in r1p]))} (n={len(r1p)}), "
-              f"from {f0(mean([x['forecast_of_hub'][0] for x in r1p]))} to {f0(mean([x['forecast_of_hub'][1] for x in r1p]))}")
+        if a.lies == "leaves":
+            leaves_lies(R, keep, var)
+        else:
+            print(f"\n######## Rule 5: the hub's lies, and whether the leaves believe them [{var}]")
+            lies_kinds(R, "hub", keep, ("mixed", "control", "hub home"))
+            # the leaves' forecasts of the hub, split by the hub's promise (the hand's reading where read)
+            L = [x for x in R["mixed"] if x["role"] == "leaves" and keep(x) and x["forecast_of_hub"]]
+            brk = [x for x in L if x["hub_promise"] and x["hub_action"] == DEF and x["forecast_of_hub"][1] is not None]
+            kept = [x for x in L if x["hub_promise"] and x["hub_action"] == COOP and x["forecast_of_hub"][1] is not None]
+            print(f"   the leaves' forecast of the hub after its promise: kept {len(kept)}, mean "
+                  f"{f0(mean([x['forecast_of_hub'][1] for x in kept]))}; broken {len(brk)}, mean "
+                  f"{f0(mean([x['forecast_of_hub'][1] for x in brk]))}; broken believed (50 or more) "
+                  f"{share(sum(x['forecast_of_hub'][1] >= 50 for x in brk), len(brk))}; AUC "
+                  f"{f2(auc([x['forecast_of_hub'][1] for x in kept], [x['forecast_of_hub'][1] for x in brk]))}")
+            r1p = [x for x in L if x["round"] == 1 and x["hub_promise"] and None not in x["forecast_of_hub"]]
+            print(f"   round 1, a leaf's forecast of the hub after the hub's promise: shift "
+                  f"{f1(mean([x['forecast_of_hub'][1] - x['forecast_of_hub'][0] for x in r1p]))} (n={len(r1p)}), "
+                  f"from {f0(mean([x['forecast_of_hub'][0] for x in r1p]))} to {f0(mean([x['forecast_of_hub'][1] for x in r1p]))}")
 
         print(f"\n######## Rule 6: belief and action, by role [{var}]")
         for s in ("mixed", "control"):
@@ -419,10 +494,11 @@ def write_sheet(folder, name, rows, text_of, fields):
 
 
 def sheet_runs(a):
+    """The mixed runs, and the control's: the stars of the hub's or the leaves' model."""
     mixed = load(a.mixed, True)
-    hub_model = mixed[0]["config"]["agent_models"]["0"] if mixed else None
+    models = {mixed[0]["config"]["agent_models"]["0"], mixed[0]["config"]["model"]["model_id"]} if mixed else set()
     return [("mixed", d) for d in mixed] + [("control", d) for d in load(a.control, False)
-                                             if d["config"]["model"]["model_id"] == hub_model]
+                                             if d["config"]["model"]["model_id"] in models]
 
 
 def dump(a):
@@ -512,6 +588,8 @@ def main():
     ap.add_argument("--hand", default=None)
     ap.add_argument("--dump", default=None)
     ap.add_argument("--dump-rest", default=None)
+    ap.add_argument("--lies", choices=("hub", "leaves"), default="hub",
+                    help="whose broken promises rule 5 reads (default: the hub's)")
     a = ap.parse_args()
     if a.dump:
         dump(a)
