@@ -3,8 +3,9 @@
 Run it on every new batch, next to `verify_prompts.py` (which rebuilds the
 prompts) -- this one checks the recorded data itself:
 
-  protocol      4 agents, 16 rounds numbered 1..16, memory 10, T=0.7, seed 42,
-                <=20-word messages, action_retries 0
+  protocol      4 agents (another size with --n-agents), 16 rounds numbered
+                1..16, memory 10, T=0.7, seed 42, <=20-word messages,
+                action_retries 0
   topology      the record's type matches the folder and the config, and the
                 edge list is the one the topology would produce
   payoffs       every round's payoffs recomputed from the actions
@@ -22,7 +23,7 @@ prompts) -- this one checks the recorded data itself:
   invalid       cells above 10% unparseable actions
 
 Usage:
-    python audit_corpus.py <run folder> [<run folder> ...]
+    python audit_corpus.py [--n-agents 8] <run folder> [<run folder> ...]
 """
 from __future__ import annotations
 
@@ -59,7 +60,8 @@ def run_files(root: str):
             yield p, rec, None
 
 
-def audit(roots: list[str]) -> int:
+def audit(roots: list[str], n_agents: int = 4) -> int:
+    protocol = tuple((k, n_agents if k == "n_agents" else v) for k, v in PROTOCOL)
     issues = defaultdict(list)
     budgets = defaultdict(set)
     invalid = defaultdict(lambda: [0, 0])
@@ -81,7 +83,7 @@ def audit(roots: list[str]) -> int:
             topo_name = rec["topology"].get("type", "star")
             add = lambda m: issues[root].append(f"{m} [{rel}]")
 
-            for key, want in PROTOCOL:
+            for key, want in protocol:
                 if cfg.get(key, want) != want:
                     add(f"{key}={cfg.get(key)}")
             if model["temperature"] != 0.7:
@@ -152,7 +154,8 @@ def audit(roots: list[str]) -> int:
                 nosense[(root, cfg["game"])].append(
                     tuple(tuple(sorted(x["messages"].items())) for x in hist))
 
-    print(f"{n_files} run files in {len(roots)} folder(s)\n")
+    print(f"{n_files} run files in {len(roots)} folder(s)"
+          + (f", {n_agents} agents expected" if n_agents != 4 else "") + "\n")
     for root in roots:
         print(f"{root:58s} flags {dict(flags[root])}")
 
@@ -199,6 +202,12 @@ def audit(roots: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    args = sys.argv[1:]
+    n_agents = 4
+    if "--n-agents" in args:
+        i = args.index("--n-agents")
+        n_agents = int(args[i + 1])
+        del args[i:i + 2]
+    if not args:
         raise SystemExit(__doc__)
-    raise SystemExit(audit(sys.argv[1:]))
+    raise SystemExit(audit(args, n_agents))
