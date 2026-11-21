@@ -14,17 +14,27 @@ style that model actually writes, and keeps the dose under control.
 Only PD, star and ring grid runs. Messages that name a star-network role
 ("hub", "central agent", "leaves", ...) are dropped: the experiment runs on
 a line, and a message about a hub would tell the reader something false
-about its network.
+about its network. Messages with wording about the game's length
+(verify_prompts' horizon pattern: "final round", "16 rounds", ...) are
+dropped as well, so the source never hints at the horizon; none of the pools
+committed before 2026-11-21 holds one, so the rule removes nothing from them.
 
 With --first-round, only the cooperative pool, from round 1 alone
 (`<model>_cooperative_r1.json`): the replay of docs/replay_plan.md puts these
 messages into first-round contexts, where a line like "let's keep
 cooperating" would point to a past that does not exist.
 
+With --roots, the result trees given are read in place of the corpus layout,
+for one model: the lab server's grids live elsewhere. The Qwen3.5-122B-A10B
+pools came from its star grid at the 4096 cap, and rebuild byte for byte with
+--roots <pharos_runs>/tok4096/grid/Qwen3.5-122B-A10B.
+
 Usage:
     python build_source_pools.py --corpus <diplomatikh folder> \
         --models Qwen2.5-7B-Instruct Llama-3.1-8B-Instruct --out pools
     python build_source_pools.py ... --first-round
+    python build_source_pools.py --roots <pharos_runs>/tok4096/grid/Qwen3.8-27B-FP8 \
+        --models Qwen3.8-27B-FP8 --out pools
 """
 from __future__ import annotations
 
@@ -44,6 +54,9 @@ from signal_rules import is_signal  # noqa: E402
 STAR_WORDS = re.compile(
     r"\b(hub|hubs|central|centre|center|peripheral|periphery|leaf|leaves|"
     r"broadcast\w*|spoke|spokes|star)\b", re.I)
+# The same pattern as verify_prompts.HORIZON.
+HORIZON = re.compile(r'\b16 rounds|\bof 16\b|sixteen|total (number of )?rounds|'
+                     r'final round|rounds remain|remaining rounds', re.I)
 F1 = MESSAGE_FILTERS["F1_competitive"]
 
 
@@ -61,9 +74,11 @@ def purely_hostile(msg: str) -> bool:
     return hostile(msg) and not COOP_WORDS.search(msg)
 
 
-def collect(corpus: str, model: str, first_round: bool = False) -> dict[str, list[str]]:
-    roots = [os.path.join(corpus, "star_runs", f"{model}_star"),
-             os.path.join(corpus, "cycle_runs", f"{model}_cycle")]
+def collect(corpus: str | None, model: str, first_round: bool = False,
+            roots: list[str] | None = None) -> dict[str, list[str]]:
+    if roots is None:
+        roots = [os.path.join(corpus, "star_runs", f"{model}_star"),
+                 os.path.join(corpus, "cycle_runs", f"{model}_cycle")]
     pools: dict[str, set[str]] = {"hostile": set(), "cooperative": set()}
     for _, d in discover_records(roots):
         cfg = d["config"]
@@ -82,7 +97,7 @@ def collect(corpus: str, model: str, first_round: bool = False) -> dict[str, lis
         for r in d["history"][:1] if first_round else d["history"]:
             for msg in (r.get("messages") or {}).values():
                 msg = str(msg).strip()
-                if not msg or STAR_WORDS.search(msg):
+                if not msg or STAR_WORDS.search(msg) or HORIZON.search(msg):
                     continue
                 if kind == "hostile" and purely_hostile(msg):
                     pools[kind].add(msg)
@@ -93,20 +108,26 @@ def collect(corpus: str, model: str, first_round: bool = False) -> dict[str, lis
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--corpus", required=True, help="Folder holding star_runs/ and cycle_runs/.")
+    ap.add_argument("--corpus", help="Folder holding star_runs/ and cycle_runs/.")
+    ap.add_argument("--roots", nargs="+", default=None,
+                    help="Result trees to read instead of the corpus layout (one model).")
     ap.add_argument("--models", nargs="+", required=True)
     ap.add_argument("--out", default="pools")
     ap.add_argument("--first-round", action="store_true",
                     help="Only the cooperative pool, from round 1 (suffix _r1).")
     args = ap.parse_args()
+    if (args.corpus is None) == (args.roots is None):
+        raise SystemExit("Give either --corpus or --roots.")
+    if args.roots and len(args.models) != 1:
+        raise SystemExit("--roots holds one model's runs: give one name to --models.")
     os.makedirs(args.out, exist_ok=True)
     for m in args.models:
-        pools = collect(args.corpus, m, args.first_round)
+        pools = collect(args.corpus, m, args.first_round, args.roots)
         if args.first_round:
             pools = {"cooperative_r1": pools["cooperative"]}
         for kind, msgs in pools.items():
             if not msgs:
-                raise SystemExit(f"{m} {kind}: empty pool -- check --corpus.")
+                raise SystemExit(f"{m} {kind}: empty pool -- check --corpus or --roots.")
             body = {"model": m, "kind": kind, "n": len(msgs), "messages": msgs}
             sha = hashlib.sha1("\n".join(msgs).encode("utf-8")).hexdigest()[:12]
             body["sha1"] = sha
