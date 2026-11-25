@@ -76,6 +76,14 @@ SCENARIOS: list[tuple[str, list[str], str, str, str]] = [
     # forecasts are asked under the frame too. Their answers reach no prompt,
     # so the game is the grid cell's. Cheap talk only.
     ("framing_competitive_context_probe", ["cheap_talk"], "meaningful", "neutral", "competitive"),
+    # The manipulator with the same forecasts (docs/line_n8_liar_forecast_plan.md):
+    # framing_manipulative_context, with the two private calls of
+    # forecast_probe for every agent. The private aim stays in the system
+    # prompt of the --policy-agents only, and every call of an agent shares
+    # its system prompt, so the manipulator's forecasts are asked under its
+    # aim and everyone else's under no frame. Their answers reach no prompt,
+    # so the game is the manipulator cell's. Cheap talk only.
+    ("framing_manipulative_context_probe", ["cheap_talk"], "meaningful", "neutral", "manipulative"),
 ]
 
 # scenario -> (source action, source message pool). The pool file is
@@ -88,8 +96,10 @@ SOURCE_SCENARIOS: dict[str, tuple[str, str]] = {
 }
 
 # Scenarios that add the private forecasts (docs/forecast_probe_plan.md,
-# docs/forecast_team_plan.md, docs/qwen38_27b_competitive_plan.md).
-PROBE_SCENARIOS = {"forecast_probe", "framing_team_probe", "framing_competitive_context_probe"}
+# docs/forecast_team_plan.md, docs/qwen38_27b_competitive_plan.md,
+# docs/line_n8_liar_forecast_plan.md).
+PROBE_SCENARIOS = {"forecast_probe", "framing_team_probe", "framing_competitive_context_probe",
+                   "framing_manipulative_context_probe"}
 
 
 def parse_args() -> argparse.Namespace:
