@@ -28,6 +28,9 @@ Rules of the plan, read on one length (--n-agents, default 8):
           with both under --roots (descriptive)
 A rule is read only when the cells it needs hold 5 runs.
 
+Runs with two models in the line (config `agent_models`) are left out:
+liar_victim_report.py reads them (docs/line_n8_liar_victim_plan.md).
+
 Usage:
     python line_report.py --roots <trees> [--models <ids>] [--n-agents 8] [--csv out.csv]
 """
@@ -97,6 +100,8 @@ def collect(roots: list[str]) -> pd.DataFrame:
     for path, d in discover_records(roots):
         cfg, topo = d["config"], d["topology"]
         if topo.get("type") != "line" or cfg.get("game") != "pd" or cfg.get("condition") != "cheap_talk":
+            continue
+        if cfg.get("agent_models"):
             continue
         cell = cell_of(cfg)
         if cell is None:
